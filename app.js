@@ -687,9 +687,25 @@ function initSlips() {
 
 function updateSalaryMonth(dateStr) {
   const monthInput = document.getElementById('slipMonth');
-  if (dateStr) {
-    monthInput.value = dateStr.substring(0, 7);
+  if (!dateStr) return;
+
+  const date = new Date(dateStr + 'T00:00:00');
+  const day = date.getDate();
+
+  // Pay cycle: 25th to 24th. If day >= 25, salary month = current month.
+  // If day < 25, salary month = previous month.
+  let salaryYear = date.getFullYear();
+  let salaryMonth = date.getMonth(); // 0-indexed
+
+  if (day < 25) {
+    salaryMonth -= 1;
+    if (salaryMonth < 0) {
+      salaryMonth = 11;
+      salaryYear -= 1;
+    }
   }
+
+  monthInput.value = `${salaryYear}-${String(salaryMonth + 1).padStart(2, '0')}`;
 }
 
 function populateMonthFilter() {
