@@ -727,7 +727,8 @@ function updateSalaryMonth(dateStr) {
 function populateMonthFilter() {
   const select = document.getElementById('slipMonthFilter');
   const months = [...new Set(allSlips.map(s => s.salaryMonth))].sort().reverse();
-  const current = slipMonthFilter || (months[0] || '');
+  if (!slipMonthFilter && months.length > 0) slipMonthFilter = months[0];
+  const current = slipMonthFilter || '';
 
   select.innerHTML = '<option value="">All months</option>' +
     months.map(m => {
