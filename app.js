@@ -818,8 +818,8 @@ window.deleteSlip = function(key) {
 
 // === Expense Dashboard ===
 const BUDGETS = {
-  'Groceries': 8000,
-  'General': 3000,
+  'Groceries': 14600,
+  'General': 5500,
   'Misc Ex': 4000
 };
 
