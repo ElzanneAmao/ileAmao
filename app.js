@@ -484,11 +484,80 @@ function resetDailyTasks() {
   saveTasks();
 }
 
-// === Service Worker Registration ===
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+// === Service Worker & Notifications ===
+async function setupServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+
+  try {
+    const reg = await navigator.serviceWorker.register('sw.js');
+    await navigator.serviceWorker.ready;
+
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      if (e.data?.type === 'GET_TODAY_COUNT') {
+        const todayTasks = tasks.filter(t => isTaskScheduledToday(t));
+        const myTasks = todayTasks.filter(t =>
+          t.assignee === currentUser || t.assignee === 'both'
+        );
+        const todoCount = myTasks.filter(t => t.status === 'todo').length;
+        e.ports[0].postMessage({ count: todoCount });
+      }
+    });
+
+    if ('periodicSync' in reg) {
+      const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+      if (status.state === 'granted') {
+        await reg.periodicSync.register('daily-task-reminder', {
+          minInterval: 12 * 60 * 60 * 1000 // 12 hours
+        });
+      }
+    }
+  } catch {
+    // SW registration failed silently
+  }
+}
+
+function setupNotificationPrompt() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission !== 'default') return;
+
+  const lastDismissed = localStorage.getItem('ileamao_notif_dismissed');
+  if (lastDismissed) {
+    const daysSince = (Date.now() - parseInt(lastDismissed, 10)) / 86400000;
+    if (daysSince < 7) return;
+  }
+
+  const banner = document.getElementById('notifBanner');
+  if (!banner) return;
+  banner.classList.add('active');
+
+  document.getElementById('notifAllow').addEventListener('click', async () => {
+    banner.classList.remove('active');
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      showWelcomeNotification();
+    }
+  });
+
+  document.getElementById('notifDismiss').addEventListener('click', () => {
+    banner.classList.remove('active');
+    localStorage.setItem('ileamao_notif_dismissed', String(Date.now()));
+  });
+}
+
+function showWelcomeNotification() {
+  if (!('serviceWorker' in navigator) || Notification.permission !== 'granted') return;
+  navigator.serviceWorker.ready.then(reg => {
+    reg.showNotification('Ile Amao', {
+      body: 'Notifications enabled! You\'ll get a daily reminder of your tasks.',
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-192.png',
+      tag: 'welcome'
+    });
+  });
 }
 
 // === Start ===
 resetDailyTasks();
 init();
+setupServiceWorker();
+setTimeout(setupNotificationPrompt, 2000);

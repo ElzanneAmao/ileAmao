@@ -554,6 +554,68 @@ body {
 .empty-state svg { margin-bottom: 12px; opacity: 0.3; }
 .empty-state p { font-size: 14px; }
 
+/* === Notification Banner === */
+.notif-banner {
+  position: fixed;
+  bottom: calc(var(--nav-height) + 16px);
+  left: 50%;
+  transform: translateX(-50%) translateY(120%);
+  width: calc(100% - 32px);
+  max-width: 448px;
+  background: var(--navy);
+  color: var(--white);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-lg);
+  z-index: 150;
+  transition: transform 0.3s ease;
+}
+
+.notif-banner.active {
+  transform: translateX(-50%) translateY(0);
+}
+
+.notif-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.notif-banner-text strong {
+  font-size: 15px;
+}
+
+.notif-banner-text span {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.notif-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-sm {
+  padding: 8px 20px;
+  font-size: 13px;
+}
+
+.notif-banner .btn-primary {
+  background: var(--sage);
+}
+
+.notif-banner .btn-primary:hover {
+  background: var(--sage-light);
+}
+
+.notif-banner .btn-text {
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  font-size: 13px;
+}
+
 /* === Animations === */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
