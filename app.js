@@ -900,7 +900,7 @@ function renderBudgetBars(months, selectedMonth) {
         <div class="budget-label">
           <span>${group === 'Misc Ex' ? 'Misc Expenses' : group}</span>
         </div>
-        <div class="budget-amounts">R${formatAmount(actual)} of R${formatAmount(budget)} budget</div>
+        <div class="budget-amounts">R${formatAmount(actual)} of R${formatAmount(budget)} spent${actual <= budget ? ` — R${formatAmount(budget - actual)} left` : ` — R${formatAmount(actual - budget)} over`}</div>
         <div class="budget-bar-bg">
           <div class="budget-bar-fill ${barClass}" style="width: ${Math.min(pct, 100)}%"></div>
           <span class="budget-pct">${displayPct}%</span>
@@ -917,7 +917,7 @@ function renderBudgetBars(months, selectedMonth) {
   html += `
     <div class="budget-row" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--gray-200);">
       <div class="budget-label"><span><strong>Total</strong></span></div>
-      <div class="budget-amounts">R${formatAmount(total)} of R${formatAmount(totalBudget)} budget</div>
+      <div class="budget-amounts">R${formatAmount(total)} of R${formatAmount(totalBudget)} spent${total <= totalBudget ? ` — R${formatAmount(totalBudget - total)} left` : ` — R${formatAmount(total - totalBudget)} over`}</div>
       <div class="budget-bar-bg">
         <div class="budget-bar-fill ${totalClass}" style="width: ${Math.min(totalPct, 100)}%"></div>
         <span class="budget-pct">${totalPct}%</span>
