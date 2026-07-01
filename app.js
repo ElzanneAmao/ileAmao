@@ -356,17 +356,18 @@ window.toggleTask = function(id) {
   const task = tasks.find(t => t.id === id);
   if (!task) return;
 
-  if (task.status === 'todo') {
-    task.status = 'done';
-    task.completedAt = new Date().toISOString();
-  } else {
-    task.status = 'todo';
-    task.completedAt = null;
-  }
+  const isAdhoc = task.frequency === 'adhoc' || task.frequency === 'monthly';
+  const path = isAdhoc ? 'adhoc' : todayKey();
+  const ref = completionsRef.child(path).child(String(id));
 
-  saveTasks();
-  renderDashboard();
-  renderAllTasks();
+  if (task.status === 'todo') {
+    ref.set({
+      completedAt: new Date().toISOString(),
+      completedBy: currentUser === 'elzanne' ? 'Elzanne' : 'Deji'
+    });
+  } else {
+    ref.remove();
+  }
 };
 
 window.deleteTask = function(id) {
@@ -512,21 +513,36 @@ function updateUserUI() {
 }
 
 // === Daily Reset ===
-function resetDailyTasks() {
-  const today = todayKey();
-  const lastReset = localStorage.getItem('ileamao_lastReset');
-  if (lastReset === today) return;
+let todayCompletions = {};
+let adhocCompletions = {};
 
+function applyCompletions() {
   tasks.forEach(t => {
-    if (t.frequency === 'daily' || t.frequency === '3x_week' ||
-        t.frequency === 'every_3rd_day' || t.frequency === 'weekly') {
-      t.status = 'todo';
-      t.completedAt = null;
+    if (t.frequency === 'adhoc' || t.frequency === 'monthly') {
+      const c = adhocCompletions[String(t.id)];
+      t.status = c ? 'done' : 'todo';
+      t.completedAt = c ? c.completedAt : null;
+    } else {
+      const c = todayCompletions[String(t.id)];
+      t.status = c ? 'done' : 'todo';
+      t.completedAt = c ? c.completedAt : null;
     }
   });
-
-  localStorage.setItem('ileamao_lastReset', today);
   saveTasks();
+  renderDashboard();
+  renderAllTasks();
+}
+
+function initTaskSync() {
+  const today = todayKey();
+  completionsRef.child(today).on('value', (snap) => {
+    todayCompletions = snap.val() || {};
+    applyCompletions();
+  });
+  completionsRef.child('adhoc').on('value', (snap) => {
+    adhocCompletions = snap.val() || {};
+    applyCompletions();
+  });
 }
 
 // === Firebase ===
@@ -543,6 +559,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const groceriesRef = db.ref('groceries');
+const completionsRef = db.ref('taskCompletions');
 
 // === Grocery List ===
 function initGroceries() {
@@ -1228,8 +1245,8 @@ function showWelcomeNotification() {
 }
 
 // === Start ===
-resetDailyTasks();
 init();
+initTaskSync();
 initGroceries();
 initSlips();
 initDashboard();
