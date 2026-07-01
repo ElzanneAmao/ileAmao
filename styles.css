@@ -669,6 +669,122 @@ body {
   padding: 8px 0;
 }
 
+/* === Log Slips === */
+.slip-filter-row {
+  margin: 20px 0 12px;
+}
+
+.slip-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.slip-summary-card {
+  background: var(--navy-faint);
+  border-radius: var(--radius-sm);
+  padding: 14px 12px;
+  text-align: center;
+}
+
+.slip-summary-card.total {
+  background: var(--pink-faint);
+}
+
+.slip-summary-amount {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--navy);
+  line-height: 1;
+}
+
+.slip-summary-card.total .slip-summary-amount {
+  color: var(--pink);
+}
+
+.slip-summary-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 600;
+}
+
+.slip-group-header {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 12px 0 6px;
+  border-bottom: 1px solid var(--gray-200);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.slip-group-total {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.slip-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  animation: fadeIn 0.2s ease;
+}
+
+.slip-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.slip-item-category {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.slip-item-meta {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.slip-item-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy);
+  white-space: nowrap;
+}
+
+.slip-item-delete {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.slip-item-delete:hover { background: #FEE2E2; color: #DC2626; }
+
 /* === Notification Banner === */
 .notif-banner {
   position: fixed;

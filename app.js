@@ -630,6 +630,176 @@ window.deleteGrocery = function(key) {
   groceriesRef.child(key).remove();
 };
 
+// === Log Slips ===
+const slipsRef = db.ref('slips');
+let allSlips = [];
+let slipMonthFilter = '';
+
+function initSlips() {
+  const form = document.getElementById('slipForm');
+  const dateInput = document.getElementById('slipDate');
+  const monthInput = document.getElementById('slipMonth');
+
+  // Auto-set today's date
+  const today = new Date().toISOString().split('T')[0];
+  dateInput.value = today;
+  updateSalaryMonth(today);
+
+  dateInput.addEventListener('change', () => {
+    updateSalaryMonth(dateInput.value);
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const slip = {
+      date: dateInput.value,
+      salaryMonth: monthInput.value,
+      category: document.getElementById('slipCategory').value,
+      amount: parseFloat(document.getElementById('slipAmount').value),
+      loggedBy: currentUser === 'elzanne' ? 'Elzanne' : 'Deji',
+      loggedAt: Date.now()
+    };
+
+    if (!slip.amount || slip.amount <= 0) return;
+
+    slipsRef.push(slip);
+
+    document.getElementById('slipAmount').value = '';
+    document.getElementById('slipCategory').selectedIndex = 0;
+  });
+
+  slipsRef.orderByChild('loggedAt').on('value', (snap) => {
+    allSlips = [];
+    snap.forEach(child => {
+      allSlips.push({ key: child.key, ...child.val() });
+    });
+    allSlips.reverse();
+    populateMonthFilter();
+    renderSlips();
+  });
+
+  document.getElementById('slipMonthFilter').addEventListener('change', (e) => {
+    slipMonthFilter = e.target.value;
+    renderSlips();
+  });
+}
+
+function updateSalaryMonth(dateStr) {
+  const monthInput = document.getElementById('slipMonth');
+  if (dateStr) {
+    monthInput.value = dateStr.substring(0, 7);
+  }
+}
+
+function populateMonthFilter() {
+  const select = document.getElementById('slipMonthFilter');
+  const months = [...new Set(allSlips.map(s => s.salaryMonth))].sort().reverse();
+  const current = slipMonthFilter || (months[0] || '');
+
+  select.innerHTML = '<option value="">All months</option>' +
+    months.map(m => {
+      const [y, mo] = m.split('-');
+      const label = new Date(y, parseInt(mo) - 1).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' });
+      return `<option value="${m}" ${m === current ? 'selected' : ''}>${label}</option>`;
+    }).join('');
+}
+
+function renderSlips() {
+  const filtered = slipMonthFilter
+    ? allSlips.filter(s => s.salaryMonth === slipMonthFilter)
+    : allSlips;
+
+  // Summary
+  const summaryEl = document.getElementById('slipSummary');
+  if (filtered.length > 0) {
+    const total = filtered.reduce((sum, s) => sum + (s.amount || 0), 0);
+    const groceriesTotal = filtered
+      .filter(s => s.category.startsWith('Groceries:'))
+      .reduce((sum, s) => sum + (s.amount || 0), 0);
+    const miscTotal = filtered
+      .filter(s => s.category.startsWith('Misc Ex:'))
+      .reduce((sum, s) => sum + (s.amount || 0), 0);
+    const generalTotal = filtered
+      .filter(s => s.category.startsWith('General:'))
+      .reduce((sum, s) => sum + (s.amount || 0), 0);
+
+    summaryEl.innerHTML = `
+      <div class="slip-summary-card total">
+        <span class="slip-summary-amount">R${formatAmount(total)}</span>
+        <span class="slip-summary-label">Total</span>
+      </div>
+      <div class="slip-summary-card">
+        <span class="slip-summary-amount">R${formatAmount(groceriesTotal)}</span>
+        <span class="slip-summary-label">Groceries</span>
+      </div>
+      <div class="slip-summary-card">
+        <span class="slip-summary-amount">R${formatAmount(miscTotal)}</span>
+        <span class="slip-summary-label">Misc</span>
+      </div>
+      <div class="slip-summary-card">
+        <span class="slip-summary-amount">R${formatAmount(generalTotal)}</span>
+        <span class="slip-summary-label">General</span>
+      </div>
+    `;
+  } else {
+    summaryEl.innerHTML = '';
+  }
+
+  // Group by category prefix
+  const container = document.getElementById('slipList');
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty-state"><p>No slips logged yet</p></div>';
+    return;
+  }
+
+  const groups = {};
+  filtered.forEach(s => {
+    const prefix = s.category.split(':')[0] || 'Other';
+    if (!groups[prefix]) groups[prefix] = [];
+    groups[prefix].push(s);
+  });
+
+  let html = '';
+  for (const [group, items] of Object.entries(groups)) {
+    const groupTotal = items.reduce((sum, s) => sum + (s.amount || 0), 0);
+    html += `<div class="slip-group-header">
+      <span>${escapeHtml(group)}</span>
+      <span class="slip-group-total">R${formatAmount(groupTotal)}</span>
+    </div>`;
+    items.forEach(s => {
+      const catLabel = s.category.split(': ')[1] || s.category;
+      const dateLabel = new Date(s.date + 'T00:00:00').toLocaleDateString('en-ZA', {
+        day: 'numeric', month: 'short'
+      });
+      html += `
+        <div class="slip-item">
+          <div class="slip-item-info">
+            <div class="slip-item-category">${escapeHtml(catLabel)}</div>
+            <div class="slip-item-meta">${dateLabel} &middot; ${s.loggedBy || ''}</div>
+          </div>
+          <div class="slip-item-amount">R${formatAmount(s.amount)}</div>
+          <button class="slip-item-delete" onclick="deleteSlip('${s.key}')" aria-label="Delete">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      `;
+    });
+  }
+  container.innerHTML = html;
+}
+
+function formatAmount(num) {
+  return num.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+window.deleteSlip = function(key) {
+  if (!confirm('Delete this slip?')) return;
+  slipsRef.child(key).remove();
+};
+
 // === Service Worker & Notifications ===
 async function setupServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -716,5 +886,6 @@ function showWelcomeNotification() {
 resetDailyTasks();
 init();
 initGroceries();
+initSlips();
 setupServiceWorker();
 setTimeout(setupNotificationPrompt, 2000);

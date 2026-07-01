@@ -132,6 +132,68 @@
         <div class="grocery-summary" id="grocerySummary"></div>
       </section>
 
+      <!-- Log Slips view -->
+      <section class="view" id="slipsView">
+        <div class="section-header">
+          <h2>Log Slips</h2>
+        </div>
+
+        <form class="task-form" id="slipForm">
+          <div class="form-group">
+            <label for="slipDate">Date</label>
+            <input type="date" id="slipDate" required>
+          </div>
+          <div class="form-group">
+            <label for="slipMonth">Salary Month</label>
+            <input type="month" id="slipMonth" required>
+          </div>
+          <div class="form-group">
+            <label for="slipCategory">Category</label>
+            <select id="slipCategory" required>
+              <optgroup label="General">
+                <option value="General: Petrol">Petrol</option>
+              </optgroup>
+              <optgroup label="Groceries">
+                <option value="Groceries: Checkers">Checkers</option>
+                <option value="Groceries: Clicks">Clicks</option>
+                <option value="Groceries: Dischem">Dischem</option>
+                <option value="Groceries: Food Lover's Market">Food Lover's Market</option>
+                <option value="Groceries: Makro">Makro</option>
+                <option value="Groceries: Nigerian Food">Nigerian Food</option>
+                <option value="Groceries: Other">Other</option>
+                <option value="Groceries: Pick 'n Pay">Pick 'n Pay</option>
+                <option value="Groceries: Spar">Spar</option>
+                <option value="Groceries: Woolworths">Woolworths</option>
+              </optgroup>
+              <optgroup label="Misc Expenses">
+                <option value="Misc Ex: Car Maintenance">Car Maintenance</option>
+                <option value="Misc Ex: Clothing + Perfume">Clothing + Perfume</option>
+                <option value="Misc Ex: Dining Out">Dining Out</option>
+                <option value="Misc Ex: Gifts">Gifts</option>
+                <option value="Misc Ex: Hair and Nails">Hair and Nails</option>
+                <option value="Misc Ex: Medical">Medical</option>
+                <option value="Misc Ex: Home Related">Home Related</option>
+                <option value="Misc Ex: Miscellaneous">Miscellaneous</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="slipAmount">Amount (R)</label>
+            <input type="number" id="slipAmount" placeholder="0.00" step="0.01" min="0" required inputmode="decimal">
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Log Slip</button>
+          </div>
+        </form>
+
+        <div class="slip-filter-row">
+          <select class="filter-select" id="slipMonthFilter"></select>
+        </div>
+
+        <div class="slip-summary" id="slipSummary"></div>
+        <div class="slip-list" id="slipList"></div>
+      </section>
+
       <!-- Add/Edit task view -->
       <section class="view" id="addTaskView">
         <h2 class="view-title" id="addTaskTitle">New Task</h2>
@@ -223,6 +285,12 @@
           <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
         </svg>
         <span>Groceries</span>
+      </button>
+      <button class="nav-item" data-view="slipsView">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        <span>Slips</span>
       </button>
     </nav>
   </div>
