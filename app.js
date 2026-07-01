@@ -564,6 +564,7 @@ async function setupServiceWorker() {
 function setupNotificationPrompt() {
   if (!('Notification' in window)) return;
   if (Notification.permission !== 'default') return;
+  if (localStorage.getItem('ileamao_notif_accepted')) return;
 
   const lastDismissed = localStorage.getItem('ileamao_notif_dismissed');
   if (lastDismissed) {
@@ -575,12 +576,14 @@ function setupNotificationPrompt() {
   if (!banner) return;
   banner.classList.add('active');
 
-  document.getElementById('notifAllow').addEventListener('click', async () => {
+  document.getElementById('notifAllow').addEventListener('click', () => {
     banner.classList.remove('active');
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      showWelcomeNotification();
-    }
+    localStorage.setItem('ileamao_notif_accepted', '1');
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        showWelcomeNotification();
+      }
+    });
   });
 
   document.getElementById('notifDismiss').addEventListener('click', () => {
