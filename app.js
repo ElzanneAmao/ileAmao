@@ -663,9 +663,18 @@ async function setupServiceWorker() {
 }
 
 function setupNotificationPrompt() {
+  const banner = document.getElementById('notifBanner');
+  if (!banner) return;
+
   if (!('Notification' in window)) return;
-  if (Notification.permission !== 'default') return;
-  if (localStorage.getItem('ileamao_notif_accepted')) return;
+  if (Notification.permission === 'granted' || Notification.permission === 'denied') {
+    banner.remove();
+    return;
+  }
+  if (localStorage.getItem('ileamao_notif_accepted')) {
+    banner.remove();
+    return;
+  }
 
   const lastDismissed = localStorage.getItem('ileamao_notif_dismissed');
   if (lastDismissed) {
@@ -673,8 +682,6 @@ function setupNotificationPrompt() {
     if (daysSince < 7) return;
   }
 
-  const banner = document.getElementById('notifBanner');
-  if (!banner) return;
   banner.classList.add('active');
 
   document.getElementById('notifAllow').addEventListener('click', () => {
