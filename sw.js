@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ileamao-v1';
+const CACHE_NAME = 'ileamao-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -27,5 +27,63 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
+  );
+});
+
+// === Periodic Background Sync ===
+self.addEventListener('periodicsync', (e) => {
+  if (e.tag === 'daily-task-reminder') {
+    e.waitUntil(showDailyReminder());
+  }
+});
+
+async function showDailyReminder() {
+  const hour = new Date().getHours();
+  if (hour < 6 || hour > 10) return;
+
+  const taskCount = await getTodayTaskCount();
+  if (taskCount === 0) return;
+
+  await self.registration.showNotification('Ile Amao', {
+    body: `Good morning! You have ${taskCount} task${taskCount === 1 ? '' : 's'} today.`,
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    tag: 'daily-reminder',
+    renotify: true,
+    data: { url: './index.html' }
+  });
+}
+
+async function getTodayTaskCount() {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    const response = await cache.match('./app.js');
+    if (!response) return 0;
+
+    const clients = await self.clients.matchAll({ type: 'window' });
+    if (clients.length > 0) {
+      return new Promise((resolve) => {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = (e) => resolve(e.data.count || 0);
+        clients[0].postMessage({ type: 'GET_TODAY_COUNT' }, [channel.port2]);
+        setTimeout(() => resolve(0), 3000);
+      });
+    }
+    return 8;
+  } catch {
+    return 8;
+  }
+}
+
+// === Notification Click ===
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window' }).then(clients => {
+      if (clients.length > 0) {
+        return clients[0].focus();
+      }
+      return self.clients.openWindow(e.notification.data?.url || './index.html');
+    })
   );
 });
