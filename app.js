@@ -15,32 +15,47 @@ const CATEGORY_LABELS = {
 
 const FREQUENCY_LABELS = {
   daily: 'Daily',
+  '3x_week': '3x / Week',
+  every_3rd_day: 'Every 3rd Day',
   weekly: 'Weekly',
   monthly: 'Monthly',
   adhoc: 'One-off'
 };
 
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 const DEFAULT_TASKS = [
-  { name: 'Make the beds', category: 'chores', frequency: 'daily', assignee: 'elzanne' },
-  { name: 'Do laundry', category: 'chores', frequency: 'daily', assignee: 'elzanne' },
-  { name: 'Pack the dishwasher', category: 'chores', frequency: 'daily', assignee: 'partner' },
-  { name: 'Unpack the dishwasher', category: 'chores', frequency: 'daily', assignee: 'partner' },
-  { name: 'Do the dishes', category: 'chores', frequency: 'daily', assignee: 'partner' },
-  { name: 'Cook dinner', category: 'chores', frequency: 'daily', assignee: 'elzanne' },
-  { name: 'Prep house for robot vacuum', category: 'chores', frequency: 'daily', assignee: 'partner' },
-  { name: 'Set the robot vacuum', category: 'chores', frequency: 'daily', assignee: 'partner' },
-  { name: 'Pack away toys', category: 'chores', frequency: 'daily', assignee: 'elzanne' },
-  { name: 'Tidy up the house', category: 'chores', frequency: 'daily', assignee: 'elzanne' },
-  { name: 'Bring out food for defrost', category: 'chores', frequency: 'daily', assignee: 'elzanne' },
-  { name: 'Wash the floors', category: 'cleaning', frequency: 'weekly', assignee: 'elzanne' },
-  { name: 'Wipe the counters', category: 'cleaning', frequency: 'weekly', assignee: 'partner' },
-  { name: 'Dust the furniture', category: 'cleaning', frequency: 'weekly', assignee: 'partner' },
-  { name: 'Clean the showers', category: 'cleaning', frequency: 'weekly', assignee: 'elzanne' },
-  { name: 'Clean the sinks', category: 'cleaning', frequency: 'weekly', assignee: 'partner' },
-  { name: 'Clean the bathrooms', category: 'cleaning', frequency: 'weekly', assignee: 'elzanne' },
+  // Daily tasks
+  { name: 'Dishes', category: 'chores', frequency: 'daily', assignee: 'partner' },
+  { name: 'Pack dishwasher', category: 'chores', frequency: 'daily', assignee: 'elzanne' },
+  { name: 'Unpack dishwasher', category: 'chores', frequency: 'daily', assignee: 'partner' },
+  { name: 'Prepare dinner / bring out food', category: 'chores', frequency: 'daily', assignee: 'elzanne' },
+  { name: 'Wipe counters', category: 'chores', frequency: 'daily', assignee: 'elzanne' },
+  { name: 'Tidy play area', category: 'chores', frequency: 'daily', assignee: 'partner' },
+  { name: 'Tidy house', category: 'chores', frequency: 'daily', assignee: 'elzanne' },
+  { name: 'Make beds', category: 'chores', frequency: 'daily', assignee: 'both' },
+  { name: 'Clean kitchen', category: 'chores', frequency: 'daily', assignee: 'both' },
+
+  // 3x per week — Mon, Wed, Fri
+  { name: 'Wash laundry', category: 'chores', frequency: '3x_week', assignee: 'elzanne', scheduledDays: [1, 3, 5] },
+  { name: 'Fold laundry', category: 'chores', frequency: '3x_week', assignee: 'partner', scheduledDays: [1, 3, 5] },
+
+  // Every 3rd day
+  { name: 'Robot vacuum / manual vacuum', category: 'cleaning', frequency: 'every_3rd_day', assignee: 'elzanne' },
+
+  // Weekly room cleaning — comprehensive (dusting, floors, surfaces, etc.)
+  { name: 'Clean living room & dining room', category: 'cleaning', frequency: 'weekly', assignee: 'both', scheduledDay: 1, notes: 'Dusting, floors, surfaces — full clean' },
+  { name: 'Clean son\'s room', category: 'cleaning', frequency: 'weekly', assignee: 'both', scheduledDay: 2, notes: 'Dusting, floors, surfaces — full clean' },
+  { name: 'Clean guest room & bathrooms', category: 'cleaning', frequency: 'weekly', assignee: 'both', scheduledDay: 3, notes: 'Includes shower, toilets, floors, dusting' },
+  { name: 'Clean our room', category: 'cleaning', frequency: 'weekly', assignee: 'both', scheduledDay: 4, notes: 'Dusting, floors, surfaces — full clean' },
+  { name: 'Clean study', category: 'cleaning', frequency: 'weekly', assignee: 'both', scheduledDay: 5, notes: 'Dusting, floors, surfaces — full clean' },
+
+  // Weekly other
+  { name: 'Take out trash', category: 'chores', frequency: 'weekly', assignee: 'elzanne' },
+  { name: 'Bring dustbin back in', category: 'chores', frequency: 'weekly', assignee: 'partner' },
+
+  // Deep clean
   { name: 'Wash the windows', category: 'deepclean', frequency: 'monthly', assignee: 'outsourced' },
-  { name: 'Tidy the garden', category: 'garden', frequency: 'weekly', assignee: 'partner' },
-  { name: 'Water the garden', category: 'garden', frequency: 'weekly', assignee: 'partner' },
 ];
 
 // === State ===
@@ -70,7 +85,7 @@ function loadTasks() {
     tasks = DEFAULT_TASKS.map((t, i) => ({
       id: Date.now() + i,
       ...t,
-      notes: '',
+      notes: t.notes || '',
       status: 'todo',
       completedAt: null,
       createdAt: new Date().toISOString()
@@ -85,6 +100,52 @@ function saveTasks() {
 
 function todayKey() {
   return new Date().toISOString().split('T')[0];
+}
+
+// === Schedule Logic ===
+function isTaskScheduledToday(task) {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun … 6=Sat
+
+  switch (task.frequency) {
+    case 'daily':
+      return true;
+
+    case '3x_week':
+      return (task.scheduledDays || [1, 3, 5]).includes(dayOfWeek);
+
+    case 'every_3rd_day': {
+      const epoch = new Date('2026-01-01');
+      const diffDays = Math.floor((now - epoch) / 86400000);
+      return diffDays % 3 === 0;
+    }
+
+    case 'weekly':
+      if (task.scheduledDay !== undefined) {
+        return dayOfWeek === task.scheduledDay;
+      }
+      return true; // no specific day — show all week
+
+    case 'monthly':
+    case 'adhoc':
+      return task.status === 'todo';
+
+    default:
+      return true;
+  }
+}
+
+function getScheduleLabel(task) {
+  if (task.frequency === 'weekly' && task.scheduledDay !== undefined) {
+    return DAY_NAMES[task.scheduledDay] + 's';
+  }
+  if (task.frequency === '3x_week') {
+    return 'Mon / Wed / Fri';
+  }
+  if (task.frequency === 'every_3rd_day') {
+    return 'Every 3rd day';
+  }
+  return FREQUENCY_LABELS[task.frequency] || task.frequency;
 }
 
 // === Greeting ===
@@ -103,30 +164,47 @@ function updateGreeting() {
 // === Rendering ===
 function renderDashboard() {
   const today = todayKey();
-  const todayTasks = tasks.filter(t =>
-    t.frequency === 'daily' || (t.frequency === 'adhoc' && t.status === 'todo')
+
+  const todayTasks = tasks.filter(t => isTaskScheduledToday(t));
+  const myTodayTasks = todayTasks.filter(t =>
+    t.assignee === currentUser || t.assignee === 'both'
   );
-  const doneTodayCount = tasks.filter(t =>
+
+  const doneTodayCount = myTodayTasks.filter(t =>
     t.completedAt && t.completedAt.startsWith(today)
   ).length;
-  const todoCount = tasks.filter(t => t.status === 'todo').length;
+  const todoCount = myTodayTasks.filter(t => t.status === 'todo').length;
 
   document.getElementById('statTodo').textContent = todoCount;
   document.getElementById('statDone').textContent = doneTodayCount;
-  document.getElementById('statTotal').textContent = tasks.length;
+  document.getElementById('statTotal').textContent = myTodayTasks.length;
 
+  // Today's checklist — show user's tasks
   const todayContainer = document.getElementById('todayTasks');
-  const todayFiltered = todayTasks.slice(0, 8);
-  todayContainer.innerHTML = todayFiltered.length
-    ? todayFiltered.map(t => renderTaskItem(t)).join('')
+  const todoFirst = [...myTodayTasks].sort((a, b) => {
+    if (a.status === 'todo' && b.status !== 'todo') return -1;
+    if (a.status !== 'todo' && b.status === 'todo') return 1;
+    return 0;
+  });
+  todayContainer.innerHTML = todoFirst.length
+    ? todoFirst.map(t => renderTaskItem(t, true)).join('')
     : emptyState('All caught up for today!');
 
+  // Upcoming — tasks scheduled later this week that aren't today's
   const upcomingContainer = document.getElementById('upcomingTasks');
-  const upcoming = tasks.filter(t =>
-    (t.frequency === 'weekly' || t.frequency === 'monthly') && t.status === 'todo'
-  ).slice(0, 5);
+  const dayOfWeek = new Date().getDay();
+  const upcoming = tasks.filter(t => {
+    if (isTaskScheduledToday(t)) return false;
+    if (t.assignee !== currentUser && t.assignee !== 'both') return false;
+    if (t.frequency === 'weekly' && t.scheduledDay !== undefined) return true;
+    if (t.frequency === '3x_week') {
+      return (t.scheduledDays || [1, 3, 5]).some(d => d > dayOfWeek);
+    }
+    return false;
+  }).slice(0, 6);
+
   upcomingContainer.innerHTML = upcoming.length
-    ? upcoming.map(t => renderTaskItem(t)).join('')
+    ? upcoming.map(t => renderTaskItem(t, false)).join('')
     : emptyState('No upcoming tasks');
 }
 
@@ -140,7 +218,11 @@ function renderAllTasks() {
     filtered = filtered.filter(t => t.category === currentCategory);
   }
   if (currentAssignee !== 'all') {
-    filtered = filtered.filter(t => t.assignee === currentAssignee);
+    if (currentAssignee === 'both') {
+      filtered = filtered.filter(t => t.assignee === 'both');
+    } else {
+      filtered = filtered.filter(t => t.assignee === currentAssignee || t.assignee === 'both');
+    }
   }
 
   const todoTasks = filtered.filter(t => t.status === 'todo');
@@ -153,10 +235,15 @@ function renderAllTasks() {
     : emptyState('No tasks match your filters');
 }
 
-function renderTaskItem(task) {
+function renderTaskItem(task, showSchedule) {
   const isDone = task.status === 'done';
   const assigneeLabel = task.assignee === 'elzanne' ? 'Elzanne'
-    : task.assignee === 'partner' ? 'Deji' : 'Outsourced';
+    : task.assignee === 'partner' ? 'Deji'
+    : task.assignee === 'both' ? 'Both'
+    : 'Outsourced';
+
+  const scheduleInfo = showSchedule ? '' :
+    `<span class="task-schedule">${getScheduleLabel(task)}</span>`;
 
   return `
     <div class="task-item ${isDone ? 'done' : ''}" data-id="${task.id}">
@@ -170,6 +257,7 @@ function renderTaskItem(task) {
         <div class="task-meta">
           <span class="task-badge badge-${task.category}">${CATEGORY_LABELS[task.category] || task.category}</span>
           <span class="task-assignee">${assigneeLabel}</span>
+          ${scheduleInfo}
         </div>
       </div>
       <div class="task-actions">
@@ -257,12 +345,10 @@ function switchView(viewId) {
 
 // === Events ===
 function bindEvents() {
-  // Bottom nav
   document.querySelectorAll('.nav-item').forEach(btn => {
     btn.addEventListener('click', () => switchView(btn.dataset.view));
   });
 
-  // FAB
   document.getElementById('fabAdd').addEventListener('click', () => {
     editingTaskId = null;
     document.getElementById('addTaskTitle').textContent = 'New Task';
@@ -271,12 +357,10 @@ function bindEvents() {
     switchView('addTaskView');
   });
 
-  // Cancel
   document.getElementById('cancelTask').addEventListener('click', () => {
     switchView('dashboardView');
   });
 
-  // Form submit
   document.getElementById('taskForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const formData = {
@@ -308,7 +392,6 @@ function bindEvents() {
     switchView('dashboardView');
   });
 
-  // Tabs
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -318,19 +401,16 @@ function bindEvents() {
     });
   });
 
-  // Category filter
   document.getElementById('categoryFilter').addEventListener('change', (e) => {
     currentCategory = e.target.value;
     renderAllTasks();
   });
 
-  // Assignee filter
   document.getElementById('assigneeFilter').addEventListener('change', (e) => {
     currentAssignee = e.target.value;
     renderAllTasks();
   });
 
-  // Profile
   document.getElementById('profileBtn').addEventListener('click', () => {
     document.getElementById('profileOverlay').classList.add('active');
   });
@@ -345,11 +425,11 @@ function bindEvents() {
       localStorage.setItem(USER_KEY, currentUser);
       updateUserUI();
       updateGreeting();
+      renderDashboard();
       document.getElementById('profileOverlay').classList.remove('active');
     });
   });
 
-  // Close overlay on backdrop click
   document.getElementById('profileOverlay').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) {
       e.currentTarget.classList.remove('active');
@@ -363,7 +443,7 @@ function updateUserUI() {
     avatar.textContent = 'E';
     avatar.style.background = 'var(--sage)';
   } else {
-    avatar.textContent = 'A';
+    avatar.textContent = 'D';
     avatar.style.background = 'var(--navy-light)';
   }
 }
@@ -375,7 +455,8 @@ function resetDailyTasks() {
   if (lastReset === today) return;
 
   tasks.forEach(t => {
-    if (t.frequency === 'daily') {
+    if (t.frequency === 'daily' || t.frequency === '3x_week' ||
+        t.frequency === 'every_3rd_day' || t.frequency === 'weekly') {
       t.status = 'todo';
       t.completedAt = null;
     }

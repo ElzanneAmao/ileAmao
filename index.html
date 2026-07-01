@@ -40,7 +40,7 @@
             <span>Elzanne</span>
           </button>
           <button class="user-option" data-user="partner">
-            <span class="avatar avatar-large" style="background: var(--navy)">A</span>
+            <span class="avatar avatar-large" style="background: var(--navy)">D</span>
             <span>Deji</span>
           </button>
         </div>
@@ -84,6 +84,8 @@
         <div class="tabs">
           <button class="tab active" data-filter="all">All</button>
           <button class="tab" data-filter="daily">Daily</button>
+          <button class="tab" data-filter="3x_week">3x/Week</button>
+          <button class="tab" data-filter="every_3rd_day">Every 3rd</button>
           <button class="tab" data-filter="weekly">Weekly</button>
           <button class="tab" data-filter="monthly">Monthly</button>
           <button class="tab" data-filter="adhoc">Ad Hoc</button>
@@ -103,6 +105,7 @@
             <option value="all">Everyone</option>
             <option value="elzanne">Elzanne</option>
             <option value="partner">Deji</option>
+            <option value="both">Both</option>
             <option value="outsourced">Outsourced</option>
           </select>
         </div>
@@ -134,6 +137,8 @@
             <label for="taskFrequency">Frequency</label>
             <select id="taskFrequency">
               <option value="daily">Daily</option>
+              <option value="3x_week">3x / Week</option>
+              <option value="every_3rd_day">Every 3rd Day</option>
               <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
               <option value="adhoc">One-off</option>
@@ -144,6 +149,7 @@
             <select id="taskAssignee">
               <option value="elzanne">Elzanne</option>
               <option value="partner">Deji</option>
+              <option value="both">Both</option>
               <option value="outsourced">Outsourced</option>
             </select>
           </div>

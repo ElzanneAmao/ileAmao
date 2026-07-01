@@ -329,6 +329,12 @@ body {
   color: var(--text-secondary);
 }
 
+.task-schedule {
+  font-size: 11px;
+  color: var(--gray-400);
+  font-style: italic;
+}
+
 .task-actions {
   display: flex;
   gap: 4px;
