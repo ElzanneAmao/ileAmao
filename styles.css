@@ -196,6 +196,14 @@ body {
 
 .greeting span { color: var(--sage); }
 
+.motivation {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: -12px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
 .stats-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
