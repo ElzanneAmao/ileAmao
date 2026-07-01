@@ -2,6 +2,8 @@
 
 const STORAGE_KEY = 'ileamao_tasks';
 const USER_KEY = 'ileamao_user';
+const DATA_VERSION_KEY = 'ileamao_data_version';
+const CURRENT_DATA_VERSION = 2;
 
 const CATEGORY_LABELS = {
   chores: 'Daily Chores',
@@ -78,8 +80,10 @@ function init() {
 
 // === Data ===
 function loadTasks() {
+  const storedVersion = parseInt(localStorage.getItem(DATA_VERSION_KEY) || '0', 10);
   const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored) {
+
+  if (stored && storedVersion >= CURRENT_DATA_VERSION) {
     tasks = JSON.parse(stored);
   } else {
     tasks = DEFAULT_TASKS.map((t, i) => ({
@@ -90,6 +94,7 @@ function loadTasks() {
       completedAt: null,
       createdAt: new Date().toISOString()
     }));
+    localStorage.setItem(DATA_VERSION_KEY, String(CURRENT_DATA_VERSION));
     saveTasks();
   }
 }
