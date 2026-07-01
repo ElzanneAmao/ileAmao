@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1B2A4A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ile Amao">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>Ile Amao</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Top bar -->
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <svg class="logo-icon" viewBox="0 0 32 32" width="28" height="28">
+          <path d="M16 2L3 10v14l13 8 13-8V10L16 2z" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M16 8l-7 4.5v7L16 24l7-4.5v-7L16 8z" fill="currentColor" opacity="0.2"/>
+          <circle cx="16" cy="16" r="3" fill="currentColor"/>
+        </svg>
+        <h1 class="app-title">Ile Amao</h1>
+      </div>
+      <button class="avatar-btn" id="profileBtn" aria-label="Profile">
+        <span class="avatar" id="currentUserAvatar">E</span>
+      </button>
+    </header>
+
+    <!-- User switcher overlay -->
+    <div class="overlay" id="profileOverlay">
+      <div class="overlay-content profile-panel">
+        <h2>Who's using?</h2>
+        <div class="user-select">
+          <button class="user-option" data-user="elzanne">
+            <span class="avatar avatar-large" style="background: var(--sage)">E</span>
+            <span>Elzanne</span>
+          </button>
+          <button class="user-option" data-user="partner">
+            <span class="avatar avatar-large" style="background: var(--navy)">A</span>
+            <span>Deji</span>
+          </button>
+        </div>
+        <button class="btn-text" id="closeProfile">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <main class="main-content" id="mainContent">
+      <!-- Dashboard view -->
+      <section class="view active" id="dashboardView">
+        <div class="greeting" id="greeting"></div>
+        <div class="stats-row">
+          <div class="stat-card">
+            <span class="stat-number" id="statTodo">0</span>
+            <span class="stat-label">To Do</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-number" id="statDone">0</span>
+            <span class="stat-label">Done Today</span>
+          </div>
+          <div class="stat-card accent">
+            <span class="stat-number" id="statTotal">0</span>
+            <span class="stat-label">Total</span>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <h2>Today's Tasks</h2>
+        </div>
+        <div class="task-list" id="todayTasks"></div>
+
+        <div class="section-header">
+          <h2>Upcoming</h2>
+        </div>
+        <div class="task-list" id="upcomingTasks"></div>
+      </section>
+
+      <!-- Tasks view -->
+      <section class="view" id="tasksView">
+        <div class="tabs">
+          <button class="tab active" data-filter="all">All</button>
+          <button class="tab" data-filter="daily">Daily</button>
+          <button class="tab" data-filter="weekly">Weekly</button>
+          <button class="tab" data-filter="monthly">Monthly</button>
+          <button class="tab" data-filter="adhoc">Ad Hoc</button>
+        </div>
+        <div class="filter-row">
+          <select class="filter-select" id="categoryFilter">
+            <option value="all">All Categories</option>
+            <option value="chores">Daily Chores</option>
+            <option value="cleaning">Cleaning</option>
+            <option value="deepclean">Deep Clean</option>
+            <option value="garden">Garden</option>
+            <option value="child">Little One</option>
+            <option value="admin">Admin & Errands</option>
+            <option value="groceries">Groceries</option>
+          </select>
+          <select class="filter-select" id="assigneeFilter">
+            <option value="all">Everyone</option>
+            <option value="elzanne">Elzanne</option>
+            <option value="partner">Deji</option>
+            <option value="outsourced">Outsourced</option>
+          </select>
+        </div>
+        <div class="task-list" id="allTasks"></div>
+      </section>
+
+      <!-- Add/Edit task view -->
+      <section class="view" id="addTaskView">
+        <h2 class="view-title" id="addTaskTitle">New Task</h2>
+        <form id="taskForm" class="task-form">
+          <input type="hidden" id="taskId">
+          <div class="form-group">
+            <label for="taskName">Task</label>
+            <input type="text" id="taskName" placeholder="What needs doing?" required>
+          </div>
+          <div class="form-group">
+            <label for="taskCategory">Category</label>
+            <select id="taskCategory">
+              <option value="chores">Daily Chores</option>
+              <option value="cleaning">Cleaning</option>
+              <option value="deepclean">Deep Clean</option>
+              <option value="garden">Garden</option>
+              <option value="child">Little One</option>
+              <option value="admin">Admin & Errands</option>
+              <option value="groceries">Groceries</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="taskFrequency">Frequency</label>
+            <select id="taskFrequency">
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="adhoc">One-off</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="taskAssignee">Assigned to</label>
+            <select id="taskAssignee">
+              <option value="elzanne">Elzanne</option>
+              <option value="partner">Deji</option>
+              <option value="outsourced">Outsourced</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="taskNotes">Notes (optional)</label>
+            <textarea id="taskNotes" rows="2" placeholder="Any details..."></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" id="cancelTask">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Task</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <!-- FAB -->
+    <button class="fab" id="fabAdd" aria-label="Add task">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-view="dashboardView">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12l9-8 9 8"/><path d="M5 10v10h14V10"/>
+        </svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-item" data-view="tasksView">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M9 10l2 2 4-4"/>
+        </svg>
+        <span>Tasks</span>
+      </button>
+    </nav>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
