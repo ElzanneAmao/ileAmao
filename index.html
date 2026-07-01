@@ -171,10 +171,12 @@
                 <option value="Groceries: Spar">Spar</option>
                 <option value="Groceries: Woolworths">Woolworths</option>
               </optgroup>
+              <optgroup label="Dining Out">
+                <option value="Dining Out">Dining Out</option>
+              </optgroup>
               <optgroup label="Misc Expenses">
                 <option value="Misc Ex: Car Maintenance">Car Maintenance</option>
                 <option value="Misc Ex: Clothing + Perfume">Clothing + Perfume</option>
-                <option value="Misc Ex: Dining Out">Dining Out</option>
                 <option value="Misc Ex: Gifts">Gifts</option>
                 <option value="Misc Ex: Hair and Nails">Hair and Nails</option>
                 <option value="Misc Ex: Medical">Medical</option>
@@ -182,6 +184,10 @@
                 <option value="Misc Ex: Miscellaneous">Miscellaneous</option>
               </optgroup>
             </select>
+          </div>
+          <div class="form-group" id="restaurantGroup" style="display:none">
+            <label for="slipRestaurant">Restaurant (optional)</label>
+            <input type="text" id="slipRestaurant" placeholder="e.g. Spur, Nando's..." autocomplete="off">
           </div>
           <div class="form-group">
             <label for="slipAmount">Amount (R)</label>

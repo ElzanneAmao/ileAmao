@@ -649,6 +649,15 @@ function initSlips() {
     updateSalaryMonth(dateInput.value);
   });
 
+  const categorySelect = document.getElementById('slipCategory');
+  const restaurantGroup = document.getElementById('restaurantGroup');
+  const restaurantInput = document.getElementById('slipRestaurant');
+
+  categorySelect.addEventListener('change', () => {
+    restaurantGroup.style.display = categorySelect.value === 'Dining Out' ? '' : 'none';
+    if (categorySelect.value !== 'Dining Out') restaurantInput.value = '';
+  });
+
   form.addEventListener('submit', (e) => {
     e.preventDefault();
 
@@ -661,12 +670,19 @@ function initSlips() {
       loggedAt: Date.now()
     };
 
+    const restaurant = restaurantInput.value.trim();
+    if (restaurant && slip.category === 'Dining Out') {
+      slip.restaurant = restaurant;
+    }
+
     if (!slip.amount || slip.amount <= 0) return;
 
     slipsRef.push(slip);
 
     document.getElementById('slipAmount').value = '';
     document.getElementById('slipCategory').selectedIndex = 0;
+    restaurantInput.value = '';
+    restaurantGroup.style.display = 'none';
   });
 
   slipsRef.orderByChild('loggedAt').on('value', (snap) => {
@@ -733,6 +749,9 @@ function renderSlips() {
     const groceriesTotal = filtered
       .filter(s => s.category.startsWith('Groceries:'))
       .reduce((sum, s) => sum + (s.amount || 0), 0);
+    const diningTotal = filtered
+      .filter(s => s.category === 'Dining Out' || s.category.startsWith('Dining Out:'))
+      .reduce((sum, s) => sum + (s.amount || 0), 0);
     const miscTotal = filtered
       .filter(s => s.category.startsWith('Misc Ex:'))
       .reduce((sum, s) => sum + (s.amount || 0), 0);
@@ -748,6 +767,10 @@ function renderSlips() {
       <div class="slip-summary-card">
         <span class="slip-summary-amount">R${formatAmount(groceriesTotal)}</span>
         <span class="slip-summary-label">Groceries</span>
+      </div>
+      <div class="slip-summary-card">
+        <span class="slip-summary-amount">R${formatAmount(diningTotal)}</span>
+        <span class="slip-summary-label">Dining Out</span>
       </div>
       <div class="slip-summary-card">
         <span class="slip-summary-amount">R${formatAmount(miscTotal)}</span>
@@ -788,10 +811,11 @@ function renderSlips() {
       const dateLabel = new Date(s.date + 'T00:00:00').toLocaleDateString('en-ZA', {
         day: 'numeric', month: 'short'
       });
+      const restaurantLabel = s.restaurant ? ` — ${escapeHtml(s.restaurant)}` : '';
       html += `
         <div class="slip-item">
           <div class="slip-item-info">
-            <div class="slip-item-category">${escapeHtml(catLabel)}</div>
+            <div class="slip-item-category">${escapeHtml(catLabel)}${restaurantLabel}</div>
             <div class="slip-item-meta">${dateLabel} &middot; ${s.loggedBy || ''}</div>
           </div>
           <div class="slip-item-amount">R${formatAmount(s.amount)}</div>
@@ -820,6 +844,7 @@ window.deleteSlip = function(key) {
 const BUDGETS = {
   'Groceries': 14600,
   'General': 5500,
+  'Dining Out': 3000,
   'Misc Ex': 4000
 };
 
@@ -970,6 +995,7 @@ function renderCategoryBreakdown(months, selectedMonth) {
     const widthPct = maxAmount > 0 ? (amount / maxAmount) * 100 : 0;
     const prefix = cat.split(':')[0];
     const barClass = prefix.startsWith('Groceries') ? 'groceries'
+      : prefix.startsWith('Dining') ? 'dining'
       : prefix.startsWith('Misc') ? 'misc' : 'general';
     const shortCat = cat.split(': ')[1] || cat;
 
@@ -996,7 +1022,7 @@ function renderMomComparison(months, selectedMonth) {
   const prevMonth = currentIdx > 0 ? sortedMonths[currentIdx - 1] : null;
   const prevSlips = prevMonth ? months[prevMonth] : [];
 
-  const groups = ['Groceries', 'General', 'Misc Ex'];
+  const groups = ['Groceries', 'General', 'Dining Out', 'Misc Ex'];
   let html = '';
 
   groups.forEach(group => {
