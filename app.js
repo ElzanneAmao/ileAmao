@@ -26,6 +26,43 @@ const FREQUENCY_LABELS = {
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+const MOTIVATIONAL_MESSAGES = {
+  elzanne: [
+    count => `This is the house we always dreamed of — let's be proud of it! Only ${count} task${count === 1 ? '' : 's'} today. 🏡`,
+    count => `Live, love...clean? Lol. ${count} task${count === 1 ? '' : 's'} waiting for you. 💅`,
+    count => `Hey girl, hey! Get working on your ${count} task${count === 1 ? '' : 's'}. 💪`,
+    count => `WHAT A LOVELY DAY! ${count} task${count === 1 ? '' : 's'} to conquer! 🔥🔥🔥`,
+    count => `Queen of the castle reporting for duty. ${count} task${count === 1 ? '' : 's'} on the board. 👑`,
+    count => `A tidy home is a happy home. ${count} task${count === 1 ? '' : 's'} — you've got this! ✨`,
+    count => `Plot twist: the house doesn't clean itself. ${count} task${count === 1 ? '' : 's'} today. 😂`,
+    count => `You're not just doing chores, you're building a home. ${count} task${count === 1 ? '' : 's'}. 🫶`,
+    count => `Channel your inner Marie Kondo. ${count} task${count === 1 ? '' : 's'} that spark joy... or at least tidiness. ✨`,
+    count => `Rise and shine! ${count} task${count === 1 ? '' : 's'} between you and the couch. 🛋️`,
+    count => `Ile Amao won't run itself! ${count} task${count === 1 ? '' : 's'} — let's goooo. 🏃‍♀️`,
+    count => `Future you will be so grateful. Just ${count} task${count === 1 ? '' : 's'}! 🙏`,
+  ],
+  partner: [
+    count => `This is the house we always dreamed of — let's be proud of it! Only ${count} task${count === 1 ? '' : 's'} today. 🏡`,
+    count => `King Deji, your ${count} task${count === 1 ? '' : 's'} await${count === 1 ? 's' : ''}. 👑`,
+    count => `WHAT A LOVELY DAY! ${count} task${count === 1 ? '' : 's'} to conquer! 🔥🔥🔥`,
+    count => `Bro. ${count} task${count === 1 ? '' : 's'}. Let's get it done. 💪`,
+    count => `The dishwasher won't unpack itself, chief. ${count} task${count === 1 ? '' : 's'} today. 😄`,
+    count => `A tidy home is a happy home. ${count} task${count === 1 ? '' : 's'} — you've got this! ✨`,
+    count => `Rise and grind! ${count} task${count === 1 ? '' : 's'} on the list today. ☀️`,
+    count => `Plot twist: the house doesn't clean itself. ${count} task${count === 1 ? '' : 's'} today. 😂`,
+    count => `Ile Amao won't run itself! ${count} task${count === 1 ? '' : 's'} — let's goooo. 🏃‍♂️`,
+    count => `Future you will be so grateful. Just ${count} task${count === 1 ? '' : 's'}! 🙏`,
+    count => `Teamwork makes the dream work. ${count} task${count === 1 ? '' : 's'} for you today. 🤝`,
+    count => `You're not just doing chores, you're building a home. ${count} task${count === 1 ? '' : 's'}. 🫶`,
+  ]
+};
+
+function getMotivationalMessage(user, count) {
+  const messages = MOTIVATIONAL_MESSAGES[user] || MOTIVATIONAL_MESSAGES.elzanne;
+  const index = Math.floor(Math.random() * messages.length);
+  return messages[index](count);
+}
+
 const DEFAULT_TASKS = [
   // Daily tasks
   { name: 'Dishes', category: 'chores', frequency: 'daily', assignee: 'partner' },
@@ -162,8 +199,16 @@ function updateGreeting() {
   else if (hour < 17) greeting = 'Good afternoon';
   else greeting = 'Good evening';
 
+  const todayTasks = tasks.filter(t => isTaskScheduledToday(t));
+  const myTasks = todayTasks.filter(t =>
+    t.assignee === currentUser || t.assignee === 'both'
+  );
+  const todoCount = myTasks.filter(t => t.status === 'todo').length;
+  const motivation = getMotivationalMessage(currentUser, todoCount);
+
   document.getElementById('greeting').innerHTML =
     `${greeting}, <span>${name}</span>`;
+  document.getElementById('motivation').textContent = motivation;
 }
 
 // === Rendering ===

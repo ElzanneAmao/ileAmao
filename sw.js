@@ -37,6 +37,19 @@ self.addEventListener('periodicsync', (e) => {
   }
 });
 
+const NOTIF_MESSAGES = [
+  count => `This is the house we always dreamed of — let's be proud of it! Only ${count} tasks today. 🏡`,
+  count => `Live, love...clean? Lol. ${count} tasks waiting for you. 💅`,
+  count => `WHAT A LOVELY DAY! ${count} tasks to conquer! 🔥`,
+  count => `Plot twist: the house doesn't clean itself. ${count} tasks today. 😂`,
+  count => `A tidy home is a happy home. ${count} tasks — you've got this! ✨`,
+  count => `Rise and shine! ${count} tasks between you and the couch. 🛋️`,
+  count => `Ile Amao won't run itself! ${count} tasks — let's goooo. 🏃`,
+  count => `Future you will be so grateful. Just ${count} tasks! 🙏`,
+  count => `Teamwork makes the dream work. ${count} tasks today. 🤝`,
+  count => `You're not just doing chores, you're building a home. ${count} tasks. 🫶`,
+];
+
 async function showDailyReminder() {
   const hour = new Date().getHours();
   if (hour < 6 || hour > 10) return;
@@ -44,8 +57,10 @@ async function showDailyReminder() {
   const taskCount = await getTodayTaskCount();
   if (taskCount === 0) return;
 
+  const msg = NOTIF_MESSAGES[Math.floor(Math.random() * NOTIF_MESSAGES.length)];
+
   await self.registration.showNotification('Ile Amao', {
-    body: `Good morning! You have ${taskCount} task${taskCount === 1 ? '' : 's'} today.`,
+    body: msg(taskCount),
     icon: './icons/icon-192.png',
     badge: './icons/icon-192.png',
     tag: 'daily-reminder',
