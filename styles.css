@@ -953,6 +953,7 @@ body {
 }
 
 .cat-bar-fill.groceries { background: var(--sage); }
+.cat-bar-fill.dining { background: #E8913A; }
 .cat-bar-fill.misc { background: var(--pink); }
 .cat-bar-fill.general { background: var(--navy-light); }
 
