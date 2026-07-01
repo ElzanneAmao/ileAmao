@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Import Historical Data — Ile Amao</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 480px; margin: 40px auto; padding: 20px; }
+    h1 { color: #1B2A4A; font-size: 22px; }
+    #status { margin-top: 20px; padding: 16px; border-radius: 8px; background: #F1F3F5; }
+    .btn { padding: 14px 28px; background: #1B2A4A; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+    .btn:disabled { opacity: 0.5; }
+    .success { background: #EDF5EE; color: #2E7D32; }
+    .error { background: #FEE2E2; color: #DC2626; }
+  </style>
+</head>
+<body>
+  <h1>Import Historical Slips</h1>
+  <p>This will import 269 expense entries (Jan–Jun 2026) into Firebase. Only needs to run once.</p>
+  <button class="btn" id="importBtn" onclick="runImport()">Import Data</button>
+  <div id="status"></div>
+
+  <script src="import-history.js"></script>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyDQ_JCp4JIDGN3iKx9RV9tB5S8IsnYWsZ8",
+      authDomain: "ile-amao.firebaseapp.com",
+      databaseURL: "https://ile-amao-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "ile-amao",
+      storageBucket: "ile-amao.firebasestorage.app",
+      appId: "1:870686278977:web:6a1e3e0573d7f7fc3a0dc0"
+    });
+
+    const db = firebase.database();
+    const slipsRef = db.ref('slips');
+    const statusEl = document.getElementById('status');
+    const btn = document.getElementById('importBtn');
+
+    async function runImport() {
+      btn.disabled = true;
+      statusEl.textContent = 'Checking for existing data...';
+      statusEl.className = '';
+
+      try {
+        const existing = await slipsRef.orderByChild('historical').equalTo(true).once('value');
+        if (existing.exists() && existing.numChildren() > 100) {
+          statusEl.textContent = `Historical data already imported (${existing.numChildren()} entries found). No action needed.`;
+          statusEl.className = 'success';
+          return;
+        }
+
+        statusEl.textContent = 'Importing 269 entries...';
+
+        const updates = {};
+        HISTORICAL_SLIPS.forEach((row, i) => {
+          const key = 'hist_' + String(i).padStart(4, '0');
+          updates[key] = {
+            date: row[0],
+            salaryMonth: row[1],
+            category: row[2],
+            amount: row[3],
+            loggedBy: 'Elzanne',
+            loggedAt: new Date(row[0] + 'T12:00:00').getTime() + i,
+            historical: true
+          };
+        });
+
+        await slipsRef.update(updates);
+        statusEl.textContent = `Done! Successfully imported ${HISTORICAL_SLIPS.length} entries. You can close this page.`;
+        statusEl.className = 'success';
+      } catch (err) {
+        statusEl.textContent = 'Error: ' + err.message;
+        statusEl.className = 'error';
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

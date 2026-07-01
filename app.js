@@ -800,6 +800,227 @@ window.deleteSlip = function(key) {
   slipsRef.child(key).remove();
 };
 
+// === Expense Dashboard ===
+const BUDGETS = {
+  'Groceries': 8000,
+  'General': 3000,
+  'Misc Ex': 4000
+};
+
+let dashMonthFilter = '';
+
+function initDashboard() {
+  // Slip sub-tab switching
+  document.querySelectorAll('.slip-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.slip-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.slip-subview').forEach(v => v.classList.remove('active'));
+      document.getElementById(tab.dataset.slipView).classList.add('active');
+      if (tab.dataset.slipView === 'dashView') renderDashboardView();
+    });
+  });
+
+  document.getElementById('dashMonthFilter').addEventListener('change', (e) => {
+    dashMonthFilter = e.target.value;
+    renderDashboardView();
+  });
+}
+
+function renderDashboardView() {
+  if (allSlips.length === 0) return;
+
+  populateDashMonthFilter();
+
+  const months = getMonthlyData();
+  const selectedMonth = dashMonthFilter || Object.keys(months).sort().reverse()[0];
+
+  renderBudgetBars(months, selectedMonth);
+  renderMonthlyChart(months, selectedMonth);
+  renderCategoryBreakdown(months, selectedMonth);
+  renderMomComparison(months, selectedMonth);
+}
+
+function populateDashMonthFilter() {
+  const select = document.getElementById('dashMonthFilter');
+  const months = [...new Set(allSlips.map(s => s.salaryMonth))].sort().reverse();
+  const current = dashMonthFilter || months[0] || '';
+
+  select.innerHTML = months.map(m => {
+    const [y, mo] = m.split('-');
+    const label = new Date(y, parseInt(mo) - 1).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' });
+    return `<option value="${m}" ${m === current ? 'selected' : ''}>${label}</option>`;
+  }).join('');
+}
+
+function getMonthlyData() {
+  const months = {};
+  allSlips.forEach(s => {
+    if (!months[s.salaryMonth]) months[s.salaryMonth] = [];
+    months[s.salaryMonth].push(s);
+  });
+  return months;
+}
+
+function getGroupTotal(slips, prefix) {
+  return slips
+    .filter(s => s.category.startsWith(prefix))
+    .reduce((sum, s) => sum + (s.amount || 0), 0);
+}
+
+function renderBudgetBars(months, selectedMonth) {
+  const slips = months[selectedMonth] || [];
+  const container = document.getElementById('budgetBars');
+
+  let html = '';
+  for (const [group, budget] of Object.entries(BUDGETS)) {
+    const actual = getGroupTotal(slips, group);
+    const pct = Math.min((actual / budget) * 100, 150);
+    const displayPct = Math.round((actual / budget) * 100);
+    const barClass = displayPct <= 75 ? 'under' : displayPct <= 100 ? 'warn' : 'over';
+
+    html += `
+      <div class="budget-row">
+        <div class="budget-label">
+          <span>${group === 'Misc Ex' ? 'Misc Expenses' : group}</span>
+        </div>
+        <div class="budget-amounts">R${formatAmount(actual)} of R${formatAmount(budget)} budget</div>
+        <div class="budget-bar-bg">
+          <div class="budget-bar-fill ${barClass}" style="width: ${Math.min(pct, 100)}%"></div>
+          <span class="budget-pct">${displayPct}%</span>
+        </div>
+      </div>
+    `;
+  }
+
+  const total = slips.reduce((sum, s) => sum + (s.amount || 0), 0);
+  const totalBudget = Object.values(BUDGETS).reduce((a, b) => a + b, 0);
+  const totalPct = Math.round((total / totalBudget) * 100);
+  const totalClass = totalPct <= 75 ? 'under' : totalPct <= 100 ? 'warn' : 'over';
+
+  html += `
+    <div class="budget-row" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--gray-200);">
+      <div class="budget-label"><span><strong>Total</strong></span></div>
+      <div class="budget-amounts">R${formatAmount(total)} of R${formatAmount(totalBudget)} budget</div>
+      <div class="budget-bar-bg">
+        <div class="budget-bar-fill ${totalClass}" style="width: ${Math.min(totalPct, 100)}%"></div>
+        <span class="budget-pct">${totalPct}%</span>
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+function renderMonthlyChart(months, selectedMonth) {
+  const container = document.getElementById('monthlyChart');
+  const sortedMonths = Object.keys(months).sort();
+  const totals = sortedMonths.map(m =>
+    months[m].reduce((sum, s) => sum + (s.amount || 0), 0)
+  );
+  const maxTotal = Math.max(...totals);
+
+  container.innerHTML = sortedMonths.map((m, i) => {
+    const total = totals[i];
+    const heightPct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
+    const [, mo] = m.split('-');
+    const label = new Date(2026, parseInt(mo) - 1).toLocaleDateString('en-ZA', { month: 'short' });
+    const isCurrent = m === selectedMonth;
+
+    return `
+      <div class="chart-col">
+        <span class="chart-amount">R${(total/1000).toFixed(1)}k</span>
+        <div class="chart-bar ${isCurrent ? 'current' : ''}" style="height: ${heightPct}%"></div>
+        <span class="chart-label">${label}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderCategoryBreakdown(months, selectedMonth) {
+  const slips = months[selectedMonth] || [];
+  const container = document.getElementById('categoryBreakdown');
+
+  const categories = {};
+  slips.forEach(s => {
+    const cat = s.category;
+    categories[cat] = (categories[cat] || 0) + (s.amount || 0);
+  });
+
+  const sorted = Object.entries(categories).sort((a, b) => b[1] - a[1]);
+  const maxAmount = sorted.length > 0 ? sorted[0][1] : 0;
+
+  container.innerHTML = sorted.slice(0, 12).map(([cat, amount]) => {
+    const widthPct = maxAmount > 0 ? (amount / maxAmount) * 100 : 0;
+    const prefix = cat.split(':')[0];
+    const barClass = prefix.startsWith('Groceries') ? 'groceries'
+      : prefix.startsWith('Misc') ? 'misc' : 'general';
+    const shortCat = cat.split(': ')[1] || cat;
+
+    return `
+      <div class="cat-row">
+        <span class="cat-name">${escapeHtml(shortCat)}</span>
+        <div class="cat-bar-bg">
+          <div class="cat-bar-fill ${barClass}" style="width: ${widthPct}%"></div>
+        </div>
+        <span class="cat-amount">R${formatAmount(amount)}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderMomComparison(months, selectedMonth) {
+  const container = document.getElementById('momComparison');
+  const sortedMonths = Object.keys(months).sort();
+  const currentIdx = sortedMonths.indexOf(selectedMonth);
+
+  if (currentIdx < 0) { container.innerHTML = ''; return; }
+
+  const currentSlips = months[selectedMonth] || [];
+  const prevMonth = currentIdx > 0 ? sortedMonths[currentIdx - 1] : null;
+  const prevSlips = prevMonth ? months[prevMonth] : [];
+
+  const groups = ['Groceries', 'General', 'Misc Ex'];
+  let html = '';
+
+  groups.forEach(group => {
+    const current = getGroupTotal(currentSlips, group);
+    const prev = getGroupTotal(prevSlips, group);
+    const diff = prev > 0 ? ((current - prev) / prev) * 100 : 0;
+    const changeClass = diff > 5 ? 'up' : diff < -5 ? 'down' : 'flat';
+    const changeLabel = diff > 0 ? `+${Math.round(diff)}%` : diff < 0 ? `${Math.round(diff)}%` : '—';
+    const label = group === 'Misc Ex' ? 'Misc Expenses' : group;
+
+    html += `
+      <div class="mom-row">
+        <span class="mom-label">${label}</span>
+        <div class="mom-values">
+          <div class="mom-amount">R${formatAmount(current)}</div>
+          <div class="mom-change ${changeClass}">${prevMonth ? changeLabel + ' vs prev' : 'First month'}</div>
+        </div>
+      </div>
+    `;
+  });
+
+  const totalCurrent = currentSlips.reduce((sum, s) => sum + (s.amount || 0), 0);
+  const totalPrev = prevSlips.reduce((sum, s) => sum + (s.amount || 0), 0);
+  const totalDiff = totalPrev > 0 ? ((totalCurrent - totalPrev) / totalPrev) * 100 : 0;
+  const totalClass = totalDiff > 5 ? 'up' : totalDiff < -5 ? 'down' : 'flat';
+  const totalLabel = totalDiff > 0 ? `+${Math.round(totalDiff)}%` : totalDiff < 0 ? `${Math.round(totalDiff)}%` : '—';
+
+  html += `
+    <div class="mom-row" style="border-top: 2px solid var(--gray-200); padding-top: 12px;">
+      <span class="mom-label"><strong>Total</strong></span>
+      <div class="mom-values">
+        <div class="mom-amount">R${formatAmount(totalCurrent)}</div>
+        <div class="mom-change ${totalClass}">${prevMonth ? totalLabel + ' vs prev' : 'First month'}</div>
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
 // === Service Worker & Notifications ===
 async function setupServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -887,5 +1108,6 @@ resetDailyTasks();
 init();
 initGroceries();
 initSlips();
+initDashboard();
 setupServiceWorker();
 setTimeout(setupNotificationPrompt, 2000);
