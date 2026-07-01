@@ -134,6 +134,12 @@
 
       <!-- Log Slips view -->
       <section class="view" id="slipsView">
+        <div class="slip-tabs">
+          <button class="slip-tab active" data-slip-view="logView">Log</button>
+          <button class="slip-tab" data-slip-view="dashView">Dashboard</button>
+        </div>
+
+        <div id="logView" class="slip-subview active">
         <div class="section-header">
           <h2>Log Slips</h2>
         </div>
@@ -192,6 +198,41 @@
 
         <div class="slip-summary" id="slipSummary"></div>
         <div class="slip-list" id="slipList"></div>
+        </div>
+
+        <div id="dashView" class="slip-subview">
+          <div class="section-header">
+            <h2>Expense Dashboard</h2>
+          </div>
+
+          <div class="dash-month-select">
+            <select class="filter-select" id="dashMonthFilter"></select>
+          </div>
+
+          <!-- Budget vs Actual -->
+          <div class="dash-section">
+            <h3 class="dash-title">Budget vs Actual</h3>
+            <div id="budgetBars"></div>
+          </div>
+
+          <!-- Monthly Trend -->
+          <div class="dash-section">
+            <h3 class="dash-title">Monthly Totals</h3>
+            <div class="dash-chart" id="monthlyChart"></div>
+          </div>
+
+          <!-- Category Breakdown -->
+          <div class="dash-section">
+            <h3 class="dash-title">Category Breakdown</h3>
+            <div id="categoryBreakdown"></div>
+          </div>
+
+          <!-- Month-over-Month -->
+          <div class="dash-section">
+            <h3 class="dash-title">Month-over-Month</h3>
+            <div id="momComparison"></div>
+          </div>
+        </div>
       </section>
 
       <!-- Add/Edit task view -->
