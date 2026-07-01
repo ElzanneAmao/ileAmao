@@ -822,6 +822,17 @@ body {
   margin-bottom: 24px;
 }
 
+.dash-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dash-title-row .dash-title {
+  margin-bottom: 0;
+}
+
 .dash-title {
   font-size: 14px;
   font-weight: 700;
@@ -829,6 +840,64 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.3px;
   margin-bottom: 12px;
+}
+
+.budget-editor {
+  background: var(--gray-100);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.budget-editor-header {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 12px;
+}
+
+.budget-editor-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.budget-editor-row label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.budget-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.budget-input-prefix {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.budget-input {
+  width: 100px;
+  padding: 6px 10px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: right;
+  background: white;
+}
+
+.budget-editor-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--gray-200);
 }
 
 .budget-row {

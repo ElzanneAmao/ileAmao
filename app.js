@@ -841,17 +841,25 @@ window.deleteSlip = function(key) {
 };
 
 // === Expense Dashboard ===
-const BUDGETS = {
+const DEFAULT_BUDGETS = {
   'Groceries': 14600,
   'General': 5500,
-  'Dining Out': 3000,
+  'Dining Out': 800,
   'Misc Ex': 4000
 };
 
+const BUDGET_LABELS = {
+  'Groceries': 'Groceries',
+  'General': 'Petrol',
+  'Dining Out': 'Dining Out',
+  'Misc Ex': 'Misc Expenses'
+};
+
 let dashMonthFilter = '';
+let monthlyBudgets = {};
+const budgetsRef = db.ref('budgets');
 
 function initDashboard() {
-  // Slip sub-tab switching
   document.querySelectorAll('.slip-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.slip-tab').forEach(t => t.classList.remove('active'));
@@ -865,6 +873,77 @@ function initDashboard() {
   document.getElementById('dashMonthFilter').addEventListener('change', (e) => {
     dashMonthFilter = e.target.value;
     renderDashboardView();
+  });
+
+  budgetsRef.on('value', (snap) => {
+    monthlyBudgets = snap.val() || {};
+    renderDashboardView();
+  });
+
+  document.getElementById('editBudgetBtn').addEventListener('click', () => {
+    const editor = document.getElementById('budgetEditor');
+    if (editor.style.display === 'none') {
+      renderBudgetEditor();
+      editor.style.display = '';
+    } else {
+      editor.style.display = 'none';
+    }
+  });
+}
+
+function getBudgetsForMonth(month) {
+  const overrides = monthlyBudgets[month] || {};
+  const budgets = {};
+  for (const group of Object.keys(DEFAULT_BUDGETS)) {
+    budgets[group] = overrides[group] !== undefined ? overrides[group] : DEFAULT_BUDGETS[group];
+  }
+  return budgets;
+}
+
+function renderBudgetEditor() {
+  const months = getMonthlyData();
+  const selectedMonth = dashMonthFilter || Object.keys(months).sort().reverse()[0];
+  if (!selectedMonth) return;
+
+  const budgets = getBudgetsForMonth(selectedMonth);
+  const [y, mo] = selectedMonth.split('-');
+  const monthLabel = new Date(y, parseInt(mo) - 1).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' });
+
+  const editor = document.getElementById('budgetEditor');
+  let html = `<div class="budget-editor-header">Budgets for ${monthLabel}</div>`;
+
+  for (const [group, amount] of Object.entries(budgets)) {
+    const label = BUDGET_LABELS[group] || group;
+    html += `
+      <div class="budget-editor-row">
+        <label>${label}</label>
+        <div class="budget-input-wrap">
+          <span class="budget-input-prefix">R</span>
+          <input type="number" class="budget-input" data-group="${group}" value="${amount}" min="0" step="100" inputmode="numeric">
+        </div>
+      </div>
+    `;
+  }
+
+  html += `<div class="budget-editor-actions">
+    <button class="btn btn-primary btn-sm" id="saveBudgetBtn">Save</button>
+    <button class="btn-text" id="cancelBudgetBtn">Cancel</button>
+  </div>`;
+
+  editor.innerHTML = html;
+
+  document.getElementById('saveBudgetBtn').addEventListener('click', () => {
+    const inputs = editor.querySelectorAll('.budget-input');
+    const updates = {};
+    inputs.forEach(input => {
+      updates[input.dataset.group] = parseFloat(input.value) || 0;
+    });
+    budgetsRef.child(selectedMonth).set(updates);
+    editor.style.display = 'none';
+  });
+
+  document.getElementById('cancelBudgetBtn').addEventListener('click', () => {
+    editor.style.display = 'none';
   });
 }
 
@@ -912,18 +991,20 @@ function getGroupTotal(slips, prefix) {
 function renderBudgetBars(months, selectedMonth) {
   const slips = months[selectedMonth] || [];
   const container = document.getElementById('budgetBars');
+  const budgets = getBudgetsForMonth(selectedMonth);
 
   let html = '';
-  for (const [group, budget] of Object.entries(BUDGETS)) {
+  for (const [group, budget] of Object.entries(budgets)) {
     const actual = getGroupTotal(slips, group);
-    const pct = Math.min((actual / budget) * 100, 150);
-    const displayPct = Math.round((actual / budget) * 100);
+    const label = BUDGET_LABELS[group] || group;
+    const pct = budget > 0 ? Math.min((actual / budget) * 100, 150) : 0;
+    const displayPct = budget > 0 ? Math.round((actual / budget) * 100) : 0;
     const barClass = displayPct <= 75 ? 'under' : displayPct <= 100 ? 'warn' : 'over';
 
     html += `
       <div class="budget-row">
         <div class="budget-label">
-          <span>${group === 'Misc Ex' ? 'Misc Expenses' : group}</span>
+          <span>${label}</span>
         </div>
         <div class="budget-amounts">R${formatAmount(actual)} of R${formatAmount(budget)} spent${actual <= budget ? ` — R${formatAmount(budget - actual)} left` : ` — R${formatAmount(actual - budget)} over`}</div>
         <div class="budget-bar-bg">
@@ -935,8 +1016,8 @@ function renderBudgetBars(months, selectedMonth) {
   }
 
   const total = slips.reduce((sum, s) => sum + (s.amount || 0), 0);
-  const totalBudget = Object.values(BUDGETS).reduce((a, b) => a + b, 0);
-  const totalPct = Math.round((total / totalBudget) * 100);
+  const totalBudget = Object.values(budgets).reduce((a, b) => a + b, 0);
+  const totalPct = totalBudget > 0 ? Math.round((total / totalBudget) * 100) : 0;
   const totalClass = totalPct <= 75 ? 'under' : totalPct <= 100 ? 'warn' : 'over';
 
   html += `
