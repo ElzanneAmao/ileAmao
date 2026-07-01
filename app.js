@@ -529,6 +529,107 @@ function resetDailyTasks() {
   saveTasks();
 }
 
+// === Firebase ===
+const firebaseConfig = {
+  apiKey: "AIzaSyDQ_JCp4JIDGN3iKx9RV9tB5S8IsnYWsZ8",
+  authDomain: "ile-amao.firebaseapp.com",
+  databaseURL: "https://ile-amao-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "ile-amao",
+  storageBucket: "ile-amao.firebasestorage.app",
+  messagingSenderId: "870686278977",
+  appId: "1:870686278977:web:6a1e3e0573d7f7fc3a0dc0"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const groceriesRef = db.ref('groceries');
+
+// === Grocery List ===
+function initGroceries() {
+  const form = document.getElementById('groceryForm');
+  const input = document.getElementById('groceryInput');
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = input.value.trim();
+    if (!name) return;
+
+    groceriesRef.push({
+      name: name,
+      bought: false,
+      addedBy: currentUser === 'elzanne' ? 'Elzanne' : 'Deji',
+      addedAt: Date.now()
+    });
+
+    input.value = '';
+  });
+
+  document.getElementById('clearCheckedBtn').addEventListener('click', () => {
+    groceriesRef.once('value', (snap) => {
+      const updates = {};
+      snap.forEach(child => {
+        if (child.val().bought) {
+          updates[child.key] = null;
+        }
+      });
+      if (Object.keys(updates).length > 0) {
+        groceriesRef.update(updates);
+      }
+    });
+  });
+
+  groceriesRef.orderByChild('addedAt').on('value', (snap) => {
+    renderGroceryList(snap);
+  });
+}
+
+function renderGroceryList(snapshot) {
+  const container = document.getElementById('groceryList');
+  const items = [];
+
+  snapshot.forEach(child => {
+    items.push({ key: child.key, ...child.val() });
+  });
+
+  const unbought = items.filter(i => !i.bought);
+  const bought = items.filter(i => i.bought);
+  const sorted = [...unbought, ...bought];
+
+  container.innerHTML = sorted.length
+    ? sorted.map(item => `
+      <div class="grocery-item ${item.bought ? 'bought' : ''}" data-key="${item.key}">
+        <button class="grocery-check" onclick="toggleGrocery('${item.key}', ${!item.bought})" aria-label="Toggle bought">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" stroke-width="3">
+            <path d="M5 12l5 5L19 7"/>
+          </svg>
+        </button>
+        <span class="grocery-name">${escapeHtml(item.name)}</span>
+        <span class="grocery-added-by">${item.addedBy || ''}</span>
+        <button class="grocery-delete" onclick="deleteGrocery('${item.key}')" aria-label="Remove">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    `).join('')
+    : '<div class="empty-state"><p>Shopping list is empty — add items above!</p></div>';
+
+  const summary = document.getElementById('grocerySummary');
+  if (items.length > 0) {
+    summary.textContent = `${unbought.length} to buy, ${bought.length} bought`;
+  } else {
+    summary.textContent = '';
+  }
+}
+
+window.toggleGrocery = function(key, bought) {
+  groceriesRef.child(key).update({ bought: bought });
+};
+
+window.deleteGrocery = function(key) {
+  groceriesRef.child(key).remove();
+};
+
 // === Service Worker & Notifications ===
 async function setupServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -607,5 +708,6 @@ function showWelcomeNotification() {
 // === Start ===
 resetDailyTasks();
 init();
+initGroceries();
 setupServiceWorker();
 setTimeout(setupNotificationPrompt, 2000);

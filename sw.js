@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ileamao-v3';
+const CACHE_NAME = 'ileamao-v4';
 const ASSETS = [
   './',
   './index.html',

@@ -562,6 +562,113 @@ body {
 .empty-state svg { margin-bottom: 12px; opacity: 0.3; }
 .empty-state p { font-size: 14px; }
 
+/* === Grocery List === */
+.grocery-add {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.grocery-add input {
+  flex: 1;
+  padding: 12px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  color: var(--text);
+  background: var(--white);
+  font-family: inherit;
+}
+
+.grocery-add input:focus {
+  outline: none;
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(27, 42, 74, 0.1);
+}
+
+.grocery-list {
+  margin-bottom: 16px;
+}
+
+.grocery-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  animation: fadeIn 0.2s ease;
+}
+
+.grocery-item.bought {
+  opacity: 0.45;
+}
+
+.grocery-item.bought .grocery-name {
+  text-decoration: line-through;
+}
+
+.grocery-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--gray-300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: none;
+  transition: var(--transition);
+}
+
+.grocery-check:hover { border-color: var(--sage); }
+
+.grocery-item.bought .grocery-check {
+  background: var(--sage);
+  border-color: var(--sage);
+}
+
+.grocery-check svg { opacity: 0; }
+.grocery-item.bought .grocery-check svg { opacity: 1; }
+
+.grocery-name {
+  flex: 1;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.grocery-added-by {
+  font-size: 11px;
+  color: var(--gray-400);
+}
+
+.grocery-delete {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.grocery-delete:hover { background: #FEE2E2; color: #DC2626; }
+
+.grocery-summary {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 8px 0;
+}
+
 /* === Notification Banner === */
 .notif-banner {
   position: fixed;
