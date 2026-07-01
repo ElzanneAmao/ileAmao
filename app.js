@@ -167,8 +167,21 @@ function updateGreeting() {
 }
 
 // === Rendering ===
+function formatTodayHeader() {
+  const now = new Date();
+  const day = DAY_NAMES[now.getDay()];
+  const date = now.getDate();
+  const months = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  const month = months[now.getMonth()];
+  const year = now.getFullYear();
+  return `Today's Tasks — ${day}, ${date} ${month} ${year}`;
+}
+
 function renderDashboard() {
   const today = todayKey();
+
+  document.getElementById('todayHeader').textContent = formatTodayHeader();
 
   const todayTasks = tasks.filter(t => isTaskScheduledToday(t));
   const myTodayTasks = todayTasks.filter(t =>
@@ -244,7 +257,7 @@ function renderTaskItem(task, showSchedule) {
   const isDone = task.status === 'done';
   const assigneeLabel = task.assignee === 'elzanne' ? 'Elzanne'
     : task.assignee === 'partner' ? 'Deji'
-    : task.assignee === 'both' ? 'Both'
+    : task.assignee === 'both' ? 'Deji & Elzanne'
     : 'Outsourced';
 
   const scheduleInfo = showSchedule ? '' :
