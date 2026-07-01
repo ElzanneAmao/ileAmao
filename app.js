@@ -145,9 +145,8 @@ function todayKey() {
 }
 
 // === Schedule Logic ===
-function isTaskScheduledToday(task) {
-  const now = new Date();
-  const dayOfWeek = now.getDay(); // 0=Sun … 6=Sat
+function isTaskScheduledOnDate(task, date) {
+  const dayOfWeek = date.getDay();
 
   switch (task.frequency) {
     case 'daily':
@@ -158,7 +157,7 @@ function isTaskScheduledToday(task) {
 
     case 'every_3rd_day': {
       const epoch = new Date('2026-01-01');
-      const diffDays = Math.floor((now - epoch) / 86400000);
+      const diffDays = Math.floor((date - epoch) / 86400000);
       return diffDays % 3 === 0;
     }
 
@@ -166,7 +165,7 @@ function isTaskScheduledToday(task) {
       if (task.scheduledDay !== undefined) {
         return dayOfWeek === task.scheduledDay;
       }
-      return true; // no specific day — show all week
+      return true;
 
     case 'monthly':
     case 'adhoc':
@@ -175,6 +174,10 @@ function isTaskScheduledToday(task) {
     default:
       return true;
   }
+}
+
+function isTaskScheduledToday(task) {
+  return isTaskScheduledOnDate(task, new Date()) || task.carriedOver;
 }
 
 function getScheduleLabel(task) {
@@ -307,6 +310,8 @@ function renderTaskItem(task, showSchedule) {
 
   const scheduleInfo = showSchedule ? '' :
     `<span class="task-schedule">${getScheduleLabel(task)}</span>`;
+  const carryBadge = task.carriedOver && !isDone
+    ? '<span class="task-badge badge-carry">Carry over</span>' : '';
 
   return `
     <div class="task-item ${isDone ? 'done' : ''}" data-id="${task.id}">
@@ -320,6 +325,7 @@ function renderTaskItem(task, showSchedule) {
         <div class="task-meta">
           <span class="task-badge badge-${task.category}">${CATEGORY_LABELS[task.category] || task.category}</span>
           <span class="task-assignee">${assigneeLabel}</span>
+          ${carryBadge}
           ${scheduleInfo}
         </div>
       </div>
@@ -515,9 +521,17 @@ function updateUserUI() {
 // === Daily Reset ===
 let todayCompletions = {};
 let adhocCompletions = {};
+let recentCompletions = {};
+let carryOverTaskIds = new Set();
+
+function dateKey(date) {
+  return date.toISOString().split('T')[0];
+}
 
 function applyCompletions() {
+  computeCarryOvers();
   tasks.forEach(t => {
+    t.carriedOver = false;
     if (t.frequency === 'adhoc' || t.frequency === 'monthly') {
       const c = adhocCompletions[String(t.id)];
       t.status = c ? 'done' : 'todo';
@@ -526,6 +540,9 @@ function applyCompletions() {
       const c = todayCompletions[String(t.id)];
       t.status = c ? 'done' : 'todo';
       t.completedAt = c ? c.completedAt : null;
+      if (!c && carryOverTaskIds.has(t.id)) {
+        t.carriedOver = true;
+      }
     }
   });
   saveTasks();
@@ -533,16 +550,51 @@ function applyCompletions() {
   renderAllTasks();
 }
 
+function computeCarryOvers() {
+  carryOverTaskIds = new Set();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let daysBack = 1; daysBack <= 7; daysBack++) {
+    const pastDate = new Date(today);
+    pastDate.setDate(pastDate.getDate() - daysBack);
+    const key = dateKey(pastDate);
+    const dayCompletions = recentCompletions[key] || {};
+
+    tasks.forEach(t => {
+      if (t.frequency === 'adhoc' || t.frequency === 'monthly') return;
+      if (carryOverTaskIds.has(t.id)) return;
+      if (isTaskScheduledOnDate(t, pastDate) && !dayCompletions[String(t.id)]) {
+        carryOverTaskIds.add(t.id);
+      }
+    });
+  }
+}
+
 function initTaskSync() {
   const today = todayKey();
+
   completionsRef.child(today).on('value', (snap) => {
     todayCompletions = snap.val() || {};
+    recentCompletions[today] = todayCompletions;
     applyCompletions();
   });
+
   completionsRef.child('adhoc').on('value', (snap) => {
     adhocCompletions = snap.val() || {};
     applyCompletions();
   });
+
+  const now = new Date();
+  for (let i = 1; i <= 7; i++) {
+    const pastDate = new Date(now);
+    pastDate.setDate(pastDate.getDate() - i);
+    const key = dateKey(pastDate);
+    completionsRef.child(key).once('value', (snap) => {
+      recentCompletions[key] = snap.val() || {};
+      applyCompletions();
+    });
+  }
 }
 
 // === Firebase ===
