@@ -561,9 +561,13 @@ function computeCarryOvers() {
     const key = dateKey(pastDate);
     const dayCompletions = recentCompletions[key] || {};
 
+    const hasAnyCompletions = Object.keys(dayCompletions).length > 0;
+    if (!hasAnyCompletions) continue;
+
     tasks.forEach(t => {
       if (t.frequency === 'adhoc' || t.frequency === 'monthly') return;
       if (carryOverTaskIds.has(t.id)) return;
+      if (isTaskScheduledOnDate(t, today)) return;
       if (isTaskScheduledOnDate(t, pastDate) && !dayCompletions[String(t.id)]) {
         carryOverTaskIds.add(t.id);
       }
