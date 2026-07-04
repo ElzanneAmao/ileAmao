@@ -786,6 +786,13 @@ body {
   color: var(--text);
 }
 
+.slip-item-comment {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: 1px;
+}
+
 .slip-item-meta {
   font-size: 11px;
   color: var(--text-secondary);

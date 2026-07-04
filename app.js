@@ -748,12 +748,17 @@ function initSlips() {
       slip.restaurant = restaurant;
     }
 
+    const commentInput = document.getElementById('slipComment');
+    const comment = commentInput.value.trim();
+    if (comment) slip.comment = comment;
+
     if (!slip.amount || slip.amount <= 0) return;
 
     slipsRef.push(slip);
 
     document.getElementById('slipAmount').value = '';
     document.getElementById('slipCategory').selectedIndex = 0;
+    commentInput.value = '';
     restaurantInput.value = '';
     restaurantGroup.style.display = 'none';
   });
@@ -886,10 +891,12 @@ function renderSlips() {
         day: 'numeric', month: 'short'
       });
       const restaurantLabel = s.restaurant ? ` — ${escapeHtml(s.restaurant)}` : '';
+      const commentLabel = s.comment ? `<div class="slip-item-comment">${escapeHtml(s.comment)}</div>` : '';
       html += `
         <div class="slip-item">
           <div class="slip-item-info">
             <div class="slip-item-category">${escapeHtml(catLabel)}${restaurantLabel}</div>
+            ${commentLabel}
             <div class="slip-item-meta">${dateLabel} &middot; ${s.loggedBy || ''}</div>
           </div>
           <div class="slip-item-amount">R${formatAmount(s.amount)}</div>
@@ -1027,12 +1034,18 @@ function renderDashboardView() {
   populateDashMonthFilter();
 
   const months = getMonthlyData();
-  const selectedMonth = dashMonthFilter || Object.keys(months).sort().reverse()[0];
+  const selected = dashMonthFilter || Object.keys(months).sort().reverse()[0];
+  const isYtd = selected && selected.startsWith('ytd-');
 
-  renderBudgetBars(months, selectedMonth);
-  renderMonthlyChart(months, selectedMonth);
-  renderCategoryBreakdown(months, selectedMonth);
-  renderMomComparison(months, selectedMonth);
+  if (isYtd) {
+    const year = selected.split('-')[1];
+    renderYtdView(months, year);
+  } else {
+    renderBudgetBars(months, selected);
+    renderMonthlyChart(months, selected);
+    renderCategoryBreakdown(months, selected);
+    renderMomComparison(months, selected);
+  }
 }
 
 function populateDashMonthFilter() {
@@ -1040,11 +1053,18 @@ function populateDashMonthFilter() {
   const months = [...new Set(allSlips.map(s => s.salaryMonth))].sort().reverse();
   const current = dashMonthFilter || months[0] || '';
 
-  select.innerHTML = months.map(m => {
+  const years = [...new Set(months.map(m => m.split('-')[0]))].sort().reverse();
+  const ytdOptions = years.map(y =>
+    `<option value="ytd-${y}" ${current === 'ytd-' + y ? 'selected' : ''}>YTD ${y}</option>`
+  ).join('');
+
+  const monthOptions = months.map(m => {
     const [y, mo] = m.split('-');
     const label = new Date(y, parseInt(mo) - 1).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' });
     return `<option value="${m}" ${m === current ? 'selected' : ''}>${label}</option>`;
   }).join('');
+
+  select.innerHTML = ytdOptions + monthOptions;
 }
 
 function getMonthlyData() {
@@ -1216,6 +1236,134 @@ function renderMomComparison(months, selectedMonth) {
   `;
 
   container.innerHTML = html;
+}
+
+function renderYtdView(months, year) {
+  const yearMonths = Object.keys(months).filter(m => m.startsWith(year)).sort();
+  const yearSlips = yearMonths.flatMap(m => months[m]);
+
+  // Budget bars — sum of all monthly budgets for the year
+  const budgetContainer = document.getElementById('budgetBars');
+  const groups = Object.keys(DEFAULT_BUDGETS);
+  let html = '';
+
+  groups.forEach(group => {
+    const actual = getGroupTotal(yearSlips, group);
+    let totalBudget = 0;
+    yearMonths.forEach(m => {
+      const b = getBudgetsForMonth(m);
+      totalBudget += b[group] || 0;
+    });
+    const label = BUDGET_LABELS[group] || group;
+    const pct = totalBudget > 0 ? Math.min((actual / totalBudget) * 100, 150) : 0;
+    const displayPct = totalBudget > 0 ? Math.round((actual / totalBudget) * 100) : 0;
+    const barClass = displayPct <= 75 ? 'under' : displayPct <= 100 ? 'warn' : 'over';
+
+    html += `
+      <div class="budget-row">
+        <div class="budget-label"><span>${label}</span></div>
+        <div class="budget-amounts">R${formatAmount(actual)} of R${formatAmount(totalBudget)} spent${actual <= totalBudget ? ` — R${formatAmount(totalBudget - actual)} left` : ` — R${formatAmount(actual - totalBudget)} over`}</div>
+        <div class="budget-bar-bg">
+          <div class="budget-bar-fill ${barClass}" style="width: ${Math.min(pct, 100)}%"></div>
+          <span class="budget-pct">${displayPct}%</span>
+        </div>
+      </div>
+    `;
+  });
+
+  const ytdTotal = yearSlips.reduce((sum, s) => sum + (s.amount || 0), 0);
+  let ytdBudgetTotal = 0;
+  yearMonths.forEach(m => {
+    ytdBudgetTotal += Object.values(getBudgetsForMonth(m)).reduce((a, b) => a + b, 0);
+  });
+  const ytdPct = ytdBudgetTotal > 0 ? Math.round((ytdTotal / ytdBudgetTotal) * 100) : 0;
+  const ytdClass = ytdPct <= 75 ? 'under' : ytdPct <= 100 ? 'warn' : 'over';
+
+  html += `
+    <div class="budget-row" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--gray-200);">
+      <div class="budget-label"><span><strong>Total</strong></span></div>
+      <div class="budget-amounts">R${formatAmount(ytdTotal)} of R${formatAmount(ytdBudgetTotal)} spent${ytdTotal <= ytdBudgetTotal ? ` — R${formatAmount(ytdBudgetTotal - ytdTotal)} left` : ` — R${formatAmount(ytdTotal - ytdBudgetTotal)} over`}</div>
+      <div class="budget-bar-bg">
+        <div class="budget-bar-fill ${ytdClass}" style="width: ${Math.min(ytdPct, 100)}%"></div>
+        <span class="budget-pct">${ytdPct}%</span>
+      </div>
+    </div>
+  `;
+  budgetContainer.innerHTML = html;
+
+  // Monthly chart — show all months in the year
+  const chartContainer = document.getElementById('monthlyChart');
+  const totals = yearMonths.map(m =>
+    months[m].reduce((sum, s) => sum + (s.amount || 0), 0)
+  );
+  const maxTotal = Math.max(...totals);
+
+  chartContainer.innerHTML = yearMonths.map((m, i) => {
+    const total = totals[i];
+    const heightPct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
+    const [, mo] = m.split('-');
+    const label = new Date(2026, parseInt(mo) - 1).toLocaleDateString('en-ZA', { month: 'short' });
+    return `
+      <div class="chart-col">
+        <span class="chart-amount">R${(total/1000).toFixed(1)}k</span>
+        <div class="chart-bar" style="height: ${heightPct}%"></div>
+        <span class="chart-label">${label}</span>
+      </div>
+    `;
+  }).join('');
+
+  // Category breakdown — all year
+  const catContainer = document.getElementById('categoryBreakdown');
+  const categories = {};
+  yearSlips.forEach(s => {
+    const cat = s.category;
+    categories[cat] = (categories[cat] || 0) + (s.amount || 0);
+  });
+  const sorted = Object.entries(categories).sort((a, b) => b[1] - a[1]);
+  const maxAmount = sorted.length > 0 ? sorted[0][1] : 0;
+
+  catContainer.innerHTML = sorted.slice(0, 15).map(([cat, amount]) => {
+    const widthPct = maxAmount > 0 ? (amount / maxAmount) * 100 : 0;
+    const prefix = cat.split(':')[0];
+    const barClass = prefix.startsWith('Groceries') ? 'groceries'
+      : prefix.startsWith('Dining') ? 'dining'
+      : prefix.startsWith('Misc') ? 'misc' : 'general';
+    const shortCat = cat.split(': ')[1] || cat;
+    return `
+      <div class="cat-row">
+        <span class="cat-name">${escapeHtml(shortCat)}</span>
+        <div class="cat-bar-bg">
+          <div class="cat-bar-fill ${barClass}" style="width: ${widthPct}%"></div>
+        </div>
+        <span class="cat-amount">R${formatAmount(amount)}</span>
+      </div>
+    `;
+  }).join('');
+
+  // Monthly average instead of MoM
+  const momContainer = document.getElementById('momComparison');
+  const monthCount = yearMonths.length || 1;
+  const avgTotal = ytdTotal / monthCount;
+
+  let momHtml = `<div class="mom-row"><span class="mom-label"><strong>${yearMonths.length} months</strong></span>
+    <div class="mom-values"><div class="mom-amount">Avg R${formatAmount(avgTotal)}/mo</div></div></div>`;
+
+  groups.forEach(group => {
+    const actual = getGroupTotal(yearSlips, group);
+    const avg = actual / monthCount;
+    const label = BUDGET_LABELS[group] || group;
+    momHtml += `
+      <div class="mom-row">
+        <span class="mom-label">${label}</span>
+        <div class="mom-values">
+          <div class="mom-amount">R${formatAmount(actual)}</div>
+          <div class="mom-change flat">avg R${formatAmount(avg)}/mo</div>
+        </div>
+      </div>
+    `;
+  });
+
+  momContainer.innerHTML = momHtml;
 }
 
 // === Service Worker & Notifications ===
