@@ -313,20 +313,6 @@ function renderTaskItem(task, showSchedule) {
   const carryBadge = task.carriedOver && !isDone
     ? '<span class="task-badge badge-carry">Carry over</span>' : '';
 
-  let dueBadge = '';
-  if (task.dueDate && !isDone) {
-    const today = todayKey();
-    if (task.dueDate < today) {
-      dueBadge = '<span class="task-badge badge-overdue">Overdue</span>';
-    } else if (task.dueDate === today) {
-      dueBadge = '<span class="task-badge badge-due-today">Due today</span>';
-    } else {
-      const d = new Date(task.dueDate + 'T00:00:00');
-      const label = d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' });
-      dueBadge = `<span class="task-badge badge-due">Due ${label}</span>`;
-    }
-  }
-
   return `
     <div class="task-item ${isDone ? 'done' : ''}" data-id="${task.id}">
       <button class="task-check" onclick="toggleTask(${task.id})" aria-label="Toggle done">
@@ -340,7 +326,6 @@ function renderTaskItem(task, showSchedule) {
           <span class="task-badge badge-${task.category}">${CATEGORY_LABELS[task.category] || task.category}</span>
           <span class="task-assignee">${assigneeLabel}</span>
           ${carryBadge}
-          ${dueBadge}
           ${scheduleInfo}
         </div>
       </div>
@@ -395,7 +380,6 @@ window.deleteTask = function(id) {
   if (!confirm('Delete this task?')) return;
   tasks = tasks.filter(t => t.id !== id);
   saveTasks();
-  syncDueDates();
   renderDashboard();
   renderAllTasks();
 };
@@ -412,72 +396,9 @@ window.editTask = function(id) {
   document.getElementById('taskFrequency').value = task.frequency;
   document.getElementById('taskAssignee').value = task.assignee;
   document.getElementById('taskNotes').value = task.notes || '';
-  document.getElementById('taskDueDate').value = task.dueDate || '';
-  toggleDueDateField(task.frequency);
 
   switchView('addTaskView');
 };
-
-function toggleDueDateField(frequency) {
-  const group = document.getElementById('dueDateGroup');
-  group.style.display = (frequency === 'adhoc' || frequency === 'monthly') ? '' : 'none';
-  if (frequency !== 'adhoc' && frequency !== 'monthly') {
-    document.getElementById('taskDueDate').value = '';
-  }
-}
-
-const dueDatesRef = db.ref('dueDates');
-
-function syncDueDates() {
-  const dueDates = {};
-  tasks.forEach(t => {
-    if (t.dueDate && t.status !== 'done') {
-      dueDates[String(t.id)] = {
-        name: t.name,
-        dueDate: t.dueDate,
-        assignee: t.assignee
-      };
-    }
-  });
-  dueDatesRef.set(dueDates);
-}
-
-function checkDueDateReminders() {
-  const today = todayKey();
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowKey = tomorrow.toISOString().split('T')[0];
-
-  tasks.forEach(t => {
-    if (!t.dueDate || t.status === 'done') return;
-    if (t.assignee !== currentUser && t.assignee !== 'both') return;
-
-    if (t.dueDate === today) {
-      showDueDateNotification(t, 'due today');
-    } else if (t.dueDate === tomorrowKey) {
-      showDueDateNotification(t, 'due tomorrow');
-    } else if (t.dueDate < today) {
-      showDueDateNotification(t, 'overdue');
-    }
-  });
-}
-
-function showDueDateNotification(task, label) {
-  if (Notification.permission !== 'granted') return;
-  const notifKey = `ileamao_duenotif_${task.id}_${todayKey()}`;
-  if (localStorage.getItem(notifKey)) return;
-
-  navigator.serviceWorker.ready.then(reg => {
-    reg.showNotification('Ile Amao — Task ' + label + '!', {
-      body: task.name,
-      icon: './icons/icon-192.png',
-      badge: './icons/icon-192.png',
-      tag: 'due-' + task.id,
-      data: { url: './index.html' }
-    });
-  });
-  localStorage.setItem(notifKey, '1');
-}
 
 // === Navigation ===
 function switchView(viewId) {
@@ -503,13 +424,7 @@ function bindEvents() {
     document.getElementById('addTaskTitle').textContent = 'New Task';
     document.getElementById('taskForm').reset();
     document.getElementById('taskId').value = '';
-    document.getElementById('taskDueDate').value = '';
-    toggleDueDateField(document.getElementById('taskFrequency').value);
     switchView('addTaskView');
-  });
-
-  document.getElementById('taskFrequency').addEventListener('change', (e) => {
-    toggleDueDateField(e.target.value);
   });
 
   document.getElementById('cancelTask').addEventListener('click', () => {
@@ -525,13 +440,6 @@ function bindEvents() {
       assignee: document.getElementById('taskAssignee').value,
       notes: document.getElementById('taskNotes').value.trim()
     };
-
-    const dueDate = document.getElementById('taskDueDate').value;
-    if (dueDate && (formData.frequency === 'adhoc' || formData.frequency === 'monthly')) {
-      formData.dueDate = dueDate;
-    } else {
-      formData.dueDate = null;
-    }
 
     if (!formData.name) return;
 
@@ -549,7 +457,6 @@ function bindEvents() {
     }
 
     saveTasks();
-    syncDueDates();
     renderDashboard();
     renderAllTasks();
     switchView('dashboardView');
@@ -1549,4 +1456,3 @@ initSlips();
 initDashboard();
 setupServiceWorker();
 setTimeout(setupNotificationPrompt, 2000);
-setTimeout(checkDueDateReminders, 5000);
