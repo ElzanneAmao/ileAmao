@@ -1,6 +1,6 @@
 // === Ile Amao — Household Task Manager ===
 
-const APP_VERSION = 'v21';
+const APP_VERSION = 'v22';
 const STORAGE_KEY = 'ileamao_tasks';
 const USER_KEY = 'ileamao_user';
 const DATA_VERSION_KEY = 'ileamao_data_version';
@@ -118,6 +118,33 @@ function init() {
 }
 
 // === Data ===
+function slugId(name) {
+  return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+function makeTaskId(name) {
+  const base = slugId(name) || 'task';
+  let id = base, n = 2;
+  while (tasks.some(t => t.id === id)) id = base + '_' + n++;
+  return id;
+}
+
+function migrateTaskIds() {
+  // Stable name-based ids: identical on both phones, survive reseeds,
+  // so Firebase completions stay attached to the right task.
+  let changed = false;
+  const seen = new Set();
+  tasks.forEach(t => {
+    if (typeof t.id !== 'string') {
+      t.id = slugId(t.name) || ('task_' + t.id);
+      changed = true;
+    }
+    while (seen.has(t.id)) { t.id += '_2'; changed = true; }
+    seen.add(t.id);
+  });
+  if (changed) saveTasks();
+}
+
 function loadTasks() {
   const storedVersion = parseInt(localStorage.getItem(DATA_VERSION_KEY) || '0', 10);
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -129,20 +156,31 @@ function loadTasks() {
     } catch {
       tasks = null;
     }
-    if (tasks) return;
+  } else {
+    tasks = null;
   }
 
-  // Missing, outdated, corrupt, or empty — reseed defaults
-  tasks = DEFAULT_TASKS.map((t, i) => ({
-    id: Date.now() + i,
-    ...t,
-    notes: t.notes || '',
-    status: 'todo',
-    completedAt: null,
-    createdAt: new Date().toISOString()
-  }));
-  localStorage.setItem(DATA_VERSION_KEY, String(CURRENT_DATA_VERSION));
-  saveTasks();
+  if (!tasks) {
+    // Missing, outdated, corrupt, or empty — reseed defaults
+    tasks = DEFAULT_TASKS.map(t => ({
+      id: slugId(t.name),
+      ...t,
+      notes: t.notes || '',
+      status: 'todo',
+      completedAt: null,
+      createdAt: new Date().toISOString()
+    }));
+    localStorage.setItem(DATA_VERSION_KEY, String(CURRENT_DATA_VERSION));
+    saveTasks();
+  }
+
+  migrateTaskIds();
+
+  // Carry-overs only count from the first day on stable ids —
+  // older completions are keyed by the old per-device ids.
+  if (!localStorage.getItem('ileamao_id_migration')) {
+    localStorage.setItem('ileamao_id_migration', todayKey());
+  }
 }
 
 function saveTasks() {
@@ -322,24 +360,39 @@ function renderTaskItem(task, showSchedule) {
   const carryBadge = task.carriedOver && !isDone
     ? '<span class="task-badge badge-carry">Carry over</span>' : '';
 
+  let dueBadge = '';
+  if (task.dueDate && !isDone) {
+    const today = todayKey();
+    if (task.dueDate < today) {
+      dueBadge = '<span class="task-badge badge-overdue">Overdue</span>';
+    } else if (task.dueDate === today) {
+      dueBadge = '<span class="task-badge badge-due-today">Due today</span>';
+    } else {
+      const d = new Date(task.dueDate + 'T00:00:00');
+      const label = d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' });
+      dueBadge = `<span class="task-badge badge-due">Due ${label}</span>`;
+    }
+  }
+
   return `
     <div class="task-item ${isDone ? 'done' : ''}" data-id="${task.id}">
-      <button class="task-check" onclick="toggleTask(${task.id})" aria-label="Toggle done">
+      <button class="task-check" onclick="toggleTask('${task.id}')" aria-label="Toggle done">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" stroke-width="3">
           <path d="M5 12l5 5L19 7"/>
         </svg>
       </button>
-      <div class="task-info" onclick="editTask(${task.id})">
+      <div class="task-info" onclick="editTask('${task.id}')">
         <div class="task-name">${escapeHtml(task.name)}</div>
         <div class="task-meta">
           <span class="task-badge badge-${task.category}">${CATEGORY_LABELS[task.category] || task.category}</span>
           <span class="task-assignee">${assigneeLabel}</span>
           ${carryBadge}
+          ${dueBadge}
           ${scheduleInfo}
         </div>
       </div>
       <div class="task-actions">
-        <button class="task-action-btn delete" onclick="deleteTask(${task.id})" aria-label="Delete">
+        <button class="task-action-btn delete" onclick="deleteTask('${task.id}')" aria-label="Delete">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14"/>
           </svg>
@@ -405,9 +458,54 @@ window.editTask = function(id) {
   document.getElementById('taskFrequency').value = task.frequency;
   document.getElementById('taskAssignee').value = task.assignee;
   document.getElementById('taskNotes').value = task.notes || '';
+  document.getElementById('taskDueDate').value = task.dueDate || '';
+  toggleDueDateField(task.frequency);
 
   switchView('addTaskView');
 };
+
+function toggleDueDateField(frequency) {
+  const group = document.getElementById('dueDateGroup');
+  const show = frequency === 'adhoc' || frequency === 'monthly';
+  group.style.display = show ? '' : 'none';
+  if (!show) document.getElementById('taskDueDate').value = '';
+}
+
+// === Due Date Reminders ===
+function checkDueDateReminders() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!('serviceWorker' in navigator)) return;
+
+  const today = todayKey();
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+  tasks.forEach(t => {
+    if (!t.dueDate || t.status === 'done') return;
+    if (t.assignee !== currentUser && t.assignee !== 'both') return;
+
+    let label = null;
+    if (t.dueDate < today) label = 'overdue';
+    else if (t.dueDate === today) label = 'due today';
+    else if (t.dueDate === tomorrowStr) label = 'due tomorrow';
+    if (!label) return;
+
+    const notifKey = `ileamao_duenotif_${t.id}_${today}`;
+    if (localStorage.getItem(notifKey)) return;
+    localStorage.setItem(notifKey, '1');
+
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(`Ile Amao — task ${label}!`, {
+        body: t.name,
+        icon: './icons/icon-192.png',
+        badge: './icons/icon-192.png',
+        tag: 'due-' + t.id,
+        data: { url: './index.html' }
+      });
+    });
+  });
+}
 
 // === Navigation ===
 function switchView(viewId) {
@@ -433,7 +531,12 @@ function bindEvents() {
     document.getElementById('addTaskTitle').textContent = 'New Task';
     document.getElementById('taskForm').reset();
     document.getElementById('taskId').value = '';
+    toggleDueDateField(document.getElementById('taskFrequency').value);
     switchView('addTaskView');
+  });
+
+  document.getElementById('taskFrequency').addEventListener('change', (e) => {
+    toggleDueDateField(e.target.value);
   });
 
   document.getElementById('cancelTask').addEventListener('click', () => {
@@ -450,6 +553,10 @@ function bindEvents() {
       notes: document.getElementById('taskNotes').value.trim()
     };
 
+    const dueDate = document.getElementById('taskDueDate').value;
+    formData.dueDate = (dueDate && (formData.frequency === 'adhoc' || formData.frequency === 'monthly'))
+      ? dueDate : null;
+
     if (!formData.name) return;
 
     if (editingTaskId) {
@@ -457,7 +564,7 @@ function bindEvents() {
       if (task) Object.assign(task, formData);
     } else {
       tasks.push({
-        id: Date.now(),
+        id: makeTaskId(formData.name),
         ...formData,
         status: 'todo',
         completedAt: null,
@@ -549,7 +656,9 @@ function applyCompletions() {
       const c = todayCompletions[String(t.id)];
       t.status = c ? 'done' : 'todo';
       t.completedAt = c ? c.completedAt : null;
-      if (!c && carryOverTaskIds.has(t.id)) {
+      // Keep the carried-over flag even once completed, so the task
+      // stays in today's list (ticked) instead of jumping to Upcoming
+      if (carryOverTaskIds.has(t.id)) {
         t.carriedOver = true;
       }
     }
@@ -564,10 +673,15 @@ function computeCarryOvers() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Completions logged before the stable-id migration are keyed by
+  // the old per-device ids, so days before it can't be judged fairly
+  const migrationDate = localStorage.getItem('ileamao_id_migration') || '';
+
   for (let daysBack = 1; daysBack <= 7; daysBack++) {
     const pastDate = new Date(today);
     pastDate.setDate(pastDate.getDate() - daysBack);
     const key = dateKey(pastDate);
+    if (migrationDate && key < migrationDate) continue;
     const dayCompletions = recentCompletions[key] || {};
 
     const hasAnyCompletions = Object.keys(dayCompletions).length > 0;
@@ -1465,3 +1579,4 @@ initSlips();
 initDashboard();
 setupServiceWorker();
 setTimeout(setupNotificationPrompt, 2000);
+setTimeout(checkDueDateReminders, 5000);
