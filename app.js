@@ -1,6 +1,6 @@
 // === Ile Amao — Household Task Manager ===
 
-const APP_VERSION = 'v22';
+const APP_VERSION = 'v23';
 const STORAGE_KEY = 'ileamao_tasks';
 const USER_KEY = 'ileamao_user';
 const DATA_VERSION_KEY = 'ileamao_data_version';
@@ -92,7 +92,7 @@ const DEFAULT_TASKS = [
 
   // Weekly other
   { name: 'Take out trash', category: 'chores', frequency: 'weekly', assignee: 'elzanne' },
-  { name: 'Bring dustbin back in', category: 'chores', frequency: 'weekly', assignee: 'partner' },
+  { name: 'Bring dustbin back in', category: 'chores', frequency: 'weekly', assignee: 'partner', scheduledDay: 3 },
 
   // Deep clean
   { name: 'Wash the windows', category: 'deepclean', frequency: 'monthly', assignee: 'outsourced' },
@@ -175,6 +175,13 @@ function loadTasks() {
   }
 
   migrateTaskIds();
+
+  // Schedule fix: dustbin comes back in on Wednesdays only
+  const dustbin = tasks.find(t => t.id === 'bring_dustbin_back_in');
+  if (dustbin && dustbin.scheduledDay === undefined) {
+    dustbin.scheduledDay = 3;
+    saveTasks();
+  }
 
   // Carry-overs only count from the first day on stable ids —
   // older completions are keyed by the old per-device ids.
