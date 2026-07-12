@@ -339,6 +339,9 @@ body {
 .badge-admin { background: #FFF3E0; color: #E65100; }
 .badge-groceries { background: #FFF8E1; color: #F57F17; }
 .badge-carry { background: #FEE2E2; color: #DC2626; }
+.badge-overdue { background: #FEE2E2; color: #DC2626; }
+.badge-due-today { background: #FFF3E0; color: #E65100; }
+.badge-due { background: #E3F2FD; color: #1565C0; }
 
 .task-assignee {
   font-size: 11px;
