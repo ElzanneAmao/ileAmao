@@ -177,6 +177,13 @@ body {
   padding: 8px;
 }
 
+.app-version {
+  text-align: center;
+  font-size: 11px;
+  color: var(--gray-300);
+  margin-top: 8px;
+}
+
 /* === Main Content === */
 .main-content {
   padding-bottom: calc(var(--nav-height) + 16px);

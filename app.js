@@ -1,5 +1,6 @@
 // === Ile Amao — Household Task Manager ===
 
+const APP_VERSION = 'v21';
 const STORAGE_KEY = 'ileamao_tasks';
 const USER_KEY = 'ileamao_user';
 const DATA_VERSION_KEY = 'ileamao_data_version';
@@ -113,6 +114,7 @@ function init() {
   renderAllTasks();
   bindEvents();
   updateUserUI();
+  document.getElementById('appVersion').textContent = APP_VERSION;
 }
 
 // === Data ===
@@ -121,19 +123,26 @@ function loadTasks() {
   const stored = localStorage.getItem(STORAGE_KEY);
 
   if (stored && storedVersion >= CURRENT_DATA_VERSION) {
-    tasks = JSON.parse(stored);
-  } else {
-    tasks = DEFAULT_TASKS.map((t, i) => ({
-      id: Date.now() + i,
-      ...t,
-      notes: t.notes || '',
-      status: 'todo',
-      completedAt: null,
-      createdAt: new Date().toISOString()
-    }));
-    localStorage.setItem(DATA_VERSION_KEY, String(CURRENT_DATA_VERSION));
-    saveTasks();
+    try {
+      const parsed = JSON.parse(stored);
+      tasks = Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+    } catch {
+      tasks = null;
+    }
+    if (tasks) return;
   }
+
+  // Missing, outdated, corrupt, or empty — reseed defaults
+  tasks = DEFAULT_TASKS.map((t, i) => ({
+    id: Date.now() + i,
+    ...t,
+    notes: t.notes || '',
+    status: 'todo',
+    completedAt: null,
+    createdAt: new Date().toISOString()
+  }));
+  localStorage.setItem(DATA_VERSION_KEY, String(CURRENT_DATA_VERSION));
+  saveTasks();
 }
 
 function saveTasks() {
