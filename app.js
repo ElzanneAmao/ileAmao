@@ -1,6 +1,6 @@
 // === Ile Amao — Household Task Manager ===
 
-const APP_VERSION = 'v23';
+const APP_VERSION = 'v24';
 const STORAGE_KEY = 'ileamao_tasks';
 const USER_KEY = 'ileamao_user';
 const DATA_VERSION_KEY = 'ileamao_data_version';
@@ -91,7 +91,7 @@ const DEFAULT_TASKS = [
   { name: 'Clean study', category: 'cleaning', frequency: 'weekly', assignee: 'both', scheduledDay: 5, notes: 'Dusting, floors, surfaces — full clean' },
 
   // Weekly other
-  { name: 'Take out trash', category: 'chores', frequency: 'weekly', assignee: 'elzanne' },
+  { name: 'Take out trash', category: 'chores', frequency: 'weekly', assignee: 'elzanne', scheduledDay: 3, notes: 'Gather bins Tuesday evening, out Wednesday morning' },
   { name: 'Bring dustbin back in', category: 'chores', frequency: 'weekly', assignee: 'partner', scheduledDay: 3 },
 
   // Deep clean
@@ -176,7 +176,13 @@ function loadTasks() {
 
   migrateTaskIds();
 
-  // Schedule fix: dustbin comes back in on Wednesdays only
+  // Schedule fix: trash out and dustbin back in on Wednesdays only
+  const trash = tasks.find(t => t.id === 'take_out_trash');
+  if (trash && trash.scheduledDay === undefined) {
+    trash.scheduledDay = 3;
+    if (!trash.notes) trash.notes = 'Gather bins Tuesday evening, out Wednesday morning';
+    saveTasks();
+  }
   const dustbin = tasks.find(t => t.id === 'bring_dustbin_back_in');
   if (dustbin && dustbin.scheduledDay === undefined) {
     dustbin.scheduledDay = 3;
