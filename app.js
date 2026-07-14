@@ -1,6 +1,6 @@
 // === Ile Amao — Household Task Manager ===
 
-const APP_VERSION = 'v24';
+const APP_VERSION = 'v25';
 const STORAGE_KEY = 'ileamao_tasks';
 const USER_KEY = 'ileamao_user';
 const DATA_VERSION_KEY = 'ileamao_data_version';
@@ -60,8 +60,10 @@ const MOTIVATIONAL_MESSAGES = {
 
 function getMotivationalMessage(user, count) {
   const messages = MOTIVATIONAL_MESSAGES[user] || MOTIVATIONAL_MESSAGES.elzanne;
-  const index = Math.floor(Math.random() * messages.length);
-  return messages[index](count);
+  // Seeded by date + user so the message stays the same all day
+  // even when the greeting re-renders after a sync
+  const seed = (todayKey() + user).split('').reduce((a, ch) => a + ch.charCodeAt(0), 0);
+  return messages[seed % messages.length](count);
 }
 
 const DEFAULT_TASKS = [
@@ -677,6 +679,7 @@ function applyCompletions() {
     }
   });
   saveTasks();
+  updateGreeting();
   renderDashboard();
   renderAllTasks();
 }

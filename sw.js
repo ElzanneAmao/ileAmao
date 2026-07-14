@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ileamao-v24';
+const CACHE_NAME = 'ileamao-v25';
 const ASSETS = [
   './',
   './index.html',
@@ -13,7 +13,11 @@ self.addEventListener('install', (e) => {
     caches.keys().then(keys =>
       Promise.all(keys.map(k => caches.delete(k)))
     ).then(() =>
-      caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+      // cache: 'reload' bypasses the browser HTTP cache so a new
+      // service worker can never install with stale assets inside
+      caches.open(CACHE_NAME).then(cache =>
+        cache.addAll(ASSETS.map(url => new Request(url, { cache: 'reload' })))
+      )
     )
   );
   self.skipWaiting();
