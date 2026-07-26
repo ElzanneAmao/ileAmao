@@ -1,6 +1,6 @@
 // === Ile Amao — Household Task Manager ===
 
-const APP_VERSION = 'v25';
+const APP_VERSION = 'v26';
 const STORAGE_KEY = 'ileamao_tasks';
 const USER_KEY = 'ileamao_user';
 const DATA_VERSION_KEY = 'ileamao_data_version';
@@ -1588,11 +1588,44 @@ function showWelcomeNotification() {
 }
 
 // === Start ===
+// Tasks live in localStorage, so the app is usable even if Firebase
+// is unreachable — start that first, unconditionally.
 init();
-initTaskSync();
-initGroceries();
-initSlips();
-initDashboard();
 setupServiceWorker();
 setTimeout(setupNotificationPrompt, 2000);
 setTimeout(checkDueDateReminders, 5000);
+
+// Firebase-backed features (groceries, slips, budgets, tick sync) run
+// after an anonymous sign-in, which the security rules require.
+let syncStarted = false;
+function startFirebaseSync() {
+  if (syncStarted) return;
+  syncStarted = true;
+  initTaskSync();
+  initGroceries();
+  initSlips();
+  initDashboard();
+}
+
+// Sign-in problems must never block sync or crash the page: the rules
+// were open before this change and stay open until they're swapped, so
+// an unauthenticated app still has to work exactly as it did.
+try {
+  if (firebase.auth) {
+    firebase.auth().signInAnonymously()
+      .then(startFirebaseSync)
+      .catch((err) => {
+        console.warn('Anonymous sign-in failed:', err && (err.code || err.message));
+        startFirebaseSync();
+      });
+  } else {
+    console.warn('Firebase Auth SDK unavailable — continuing without sign-in');
+    startFirebaseSync();
+  }
+} catch (err) {
+  console.warn('Sign-in threw:', err);
+  startFirebaseSync();
+}
+
+// Safety net in case sign-in neither resolves nor rejects (bad network)
+setTimeout(startFirebaseSync, 3000);

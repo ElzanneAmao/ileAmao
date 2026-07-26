@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "groceries": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["addedAt"]
+    },
+    "taskCompletions": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "slips": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["loggedAt", "historical"]
+    },
+    "budgets": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}
