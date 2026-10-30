@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fix Salary Months — Ile Amao</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           max-width: 820px; margin: 0 auto; padding: 24px 20px 60px; color: #1A1D23; }
+    h1 { color: #1B2A4A; font-size: 22px; margin-bottom: 4px; }
+    p.sub { color: #5A6370; font-size: 14px; margin-top: 0; line-height: 1.5; }
+    .btn { padding: 12px 24px; background: #1B2A4A; color: #fff; border: none;
+           border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 12px; }
+    .btn:disabled { opacity: .45; cursor: default; }
+    .btn.go { background: #7A9E7E; }
+    #status { margin-top: 16px; padding: 12px 14px; border-radius: 8px; background: #F1F3F5; font-size: 14px; }
+    .ok { background: #EDF5EE !important; color: #2E7D32; }
+    .err { background: #FEE2E2 !important; color: #DC2626; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
+    th { text-align: left; color: #5A6370; font-size: 11px; text-transform: uppercase;
+         letter-spacing: .4px; border-bottom: 2px solid #E2E5E9; padding: 6px 4px; }
+    td { padding: 6px 4px; border-bottom: 1px solid #F1F3F5; }
+    td.amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .was { color: #98A1AE; text-decoration: line-through; }
+    .now { color: #2E7D32; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h1>Fix Salary Months</h1>
+  <p class="sub">Payday is the 25th, or the Friday before when the 25th falls on a Saturday,
+     Sunday or Monday. This re-checks every slip against that rule and lists only the ones
+     that would move. Nothing is saved until you confirm.</p>
+
+  <button class="btn" id="checkBtn">Check all slips</button>
+
+  <div id="status"></div>
+  <div id="preview"></div>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyDQ_JCp4JIDGN3iKx9RV9tB5S8IsnYWsZ8",
+  authDomain: "ile-amao.firebaseapp.com",
+  databaseURL: "https://ile-amao-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "ile-amao",
+  storageBucket: "ile-amao.firebasestorage.app",
+  messagingSenderId: "870686278977",
+  appId: "1:870686278977:web:6a1e3e0573d7f7fc3a0dc0"
+});
+
+const slipsRef = firebase.database().ref('slips');
+const statusEl = document.getElementById('status');
+const previewEl = document.getElementById('preview');
+let changes = null;
+
+const money = n => 'R' + Number(n).toLocaleString('en-ZA',
+  { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const esc = s => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+function say(msg, cls) { statusEl.textContent = msg; statusEl.className = cls || ''; }
+
+function paydayOfMonth(year, month) {
+  const dow = new Date(year, month, 25).getDay();
+  if (dow === 6) return 24;   // Sat -> Fri
+  if (dow === 0) return 23;   // Sun -> Fri
+  if (dow === 1) return 22;   // Mon -> Fri
+  return 25;
+}
+
+function salaryMonthFor(dateStr) {
+  const date = new Date(dateStr + 'T00:00:00');
+  let year = date.getFullYear(), month = date.getMonth();
+  if (date.getDate() < paydayOfMonth(year, month)) {
+    month -= 1;
+    if (month < 0) { month = 11; year -= 1; }
+  }
+  return `${year}-${String(month + 1).padStart(2, '0')}`;
+}
+
+document.getElementById('checkBtn').addEventListener('click', async () => {
+  previewEl.innerHTML = '';
+  changes = null;
+  say('Signing in and reading your slips…');
+
+  let all;
+  try {
+    await firebase.auth().signInAnonymously();
+    all = (await slipsRef.once('value')).val() || {};
+  } catch (err) {
+    return say('Could not reach the database: ' + (err.code || err.message), 'err');
+  }
+
+  changes = Object.entries(all)
+    .filter(([, s]) => s && s.date)
+    .map(([k, s]) => ({ k, s, correct: salaryMonthFor(s.date) }))
+    .filter(r => r.correct !== r.s.salaryMonth)
+    .sort((a, b) => a.s.date.localeCompare(b.s.date));
+
+  const total = Object.keys(all).length;
+  if (!changes.length) {
+    return say(`Checked all ${total} slips — every one is already in the right salary month.`, 'ok');
+  }
+
+  say(`Checked all ${total} slips. ${changes.length} are in the wrong salary month.`);
+  previewEl.innerHTML = `
+    <table><thead><tr><th>Date</th><th>Category</th><th>Comment</th>
+      <th class="amt">Amount</th><th>Salary month</th></tr></thead>
+    <tbody>${changes.map(r => `
+      <tr>
+        <td>${esc(r.s.date)}</td>
+        <td>${esc(r.s.category || '')}</td>
+        <td>${esc(r.s.comment || '')}</td>
+        <td class="amt">${money(r.s.amount)}</td>
+        <td><span class="was">${esc(r.s.salaryMonth || '—')}</span> → <span class="now">${esc(r.correct)}</span></td>
+      </tr>`).join('')}</tbody></table>
+    <button class="btn go" id="applyBtn">Move these ${changes.length} slips</button>`;
+
+  document.getElementById('applyBtn').addEventListener('click', apply);
+});
+
+async function apply() {
+  const btn = document.getElementById('applyBtn');
+  btn.disabled = true;
+  say('Saving…');
+  try {
+    const updates = {};
+    // Only the salaryMonth field is touched; everything else is left alone.
+    changes.forEach(r => { updates[r.k + '/salaryMonth'] = r.correct; });
+    await slipsRef.update(updates);
+    say(`Done — moved ${changes.length} slips. Open the app and check the dashboard.`, 'ok');
+    btn.remove();
+  } catch (err) {
+    say('Failed: ' + (err.code || err.message), 'err');
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

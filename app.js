@@ -1,6 +1,6 @@
 // === Ile Amao — Household Task Manager ===
 
-const APP_VERSION = 'v26';
+const APP_VERSION = 'v27';
 const STORAGE_KEY = 'ileamao_tasks';
 const USER_KEY = 'ileamao_user';
 const DATA_VERSION_KEY = 'ileamao_data_version';
@@ -918,27 +918,35 @@ function initSlips() {
   });
 }
 
+// Payday is the 25th, but salaries land on the Friday before when the
+// 25th falls on a Saturday, Sunday or Monday. Returns the day of month
+// on which that month's salary arrives.
+function paydayOfMonth(year, month) { // month 0-indexed
+  const d = new Date(year, month, 25);
+  const dow = d.getDay(); // 0=Sun, 1=Mon, 6=Sat
+  if (dow === 6) return 24;      // Sat -> Fri 24th
+  if (dow === 0) return 23;      // Sun -> Fri 23rd
+  if (dow === 1) return 22;      // Mon -> Fri 22nd
+  return 25;
+}
+
+// A spend belongs to the salary month whose payday it falls on or after.
+function salaryMonthFor(dateStr) {
+  const date = new Date(dateStr + 'T00:00:00');
+  let year = date.getFullYear();
+  let month = date.getMonth(); // 0-indexed
+
+  if (date.getDate() < paydayOfMonth(year, month)) {
+    month -= 1;
+    if (month < 0) { month = 11; year -= 1; }
+  }
+  return `${year}-${String(month + 1).padStart(2, '0')}`;
+}
+
 function updateSalaryMonth(dateStr) {
   const monthInput = document.getElementById('slipMonth');
   if (!dateStr) return;
-
-  const date = new Date(dateStr + 'T00:00:00');
-  const day = date.getDate();
-
-  // Pay cycle: 25th to 24th. If day >= 25, salary month = current month.
-  // If day < 25, salary month = previous month.
-  let salaryYear = date.getFullYear();
-  let salaryMonth = date.getMonth(); // 0-indexed
-
-  if (day < 25) {
-    salaryMonth -= 1;
-    if (salaryMonth < 0) {
-      salaryMonth = 11;
-      salaryYear -= 1;
-    }
-  }
-
-  monthInput.value = `${salaryYear}-${String(salaryMonth + 1).padStart(2, '0')}`;
+  monthInput.value = salaryMonthFor(dateStr);
 }
 
 function populateMonthFilter() {
